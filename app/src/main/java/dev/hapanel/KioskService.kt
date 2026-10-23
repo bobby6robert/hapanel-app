@@ -176,6 +176,8 @@ class KioskService : Service() {
         val idle = now - Controller.lastActivity
         val s = Prefs.sleepAfterSec
         if (s > 0 && !Controller.sleeping && idle > s * 1000L) Controller.sleep()
+        // oszczędzanie: kamera ruchu stoi, gdy ktoś właśnie używa ekranu (dotyk w ciągu 30 s)
+        motion?.let { if (!Controller.sleeping && !Controller.clock && idle < 30_000) it.pause() else it.resume() }
         val h = Prefs.homeAfterSec
         if (h > 0 && idle > h * 1000L && Controller.lastActivity > lastHomed && Prefs.dashboardUrl.isNotBlank()) {
             lastHomed = now

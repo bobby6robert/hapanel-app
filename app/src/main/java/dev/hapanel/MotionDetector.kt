@@ -8,9 +8,14 @@ import android.media.ImageReader
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.SystemClock
+import android.util.Range
 import kotlin.math.abs
 
-/** Wykrywanie ruchu: różnica jasności siatki 32x24 między klatkami (po odjęciu średniej, odporne na auto-ekspozycję). */
+/**
+ * Wykrywanie ruchu: różnica jasności siatki 32x24 między klatkami (po odjęciu średniej, odporne na auto-ekspozycję).
+ * Oszczędnie (jak w Fully): najmniejsza rozdzielczość, najniższa liczba klatek kamery,
+ * a gdy ktoś właśnie używa ekranu – kamera jest wstrzymana (pause/resume z KioskService).
+ */
 class MotionDetector(
     private val ctx: Context,
     private val threshold: Int,
@@ -25,6 +30,8 @@ class MotionDetector(
     private var prev: IntArray? = null
     private var last = 0L
     private var active = false
+    private var request: CaptureRequest? = null
+    @Volatile private var paused = false
     private val clear = Runnable { active = false; onState(false) }
 
     @SuppressLint("MissingPermission")
@@ -35,7 +42,10 @@ class MotionDetector(
         } ?: cm.cameraIdList.firstOrNull() ?: return
         val map = cm.getCameraCharacteristics(id).get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP) ?: return
         val sizes = map.getOutputSizes(ImageFormat.YUV_420_888) ?: return
-        val size = sizes.filter { it.width >= 320 }.minByOrNull { it.width * it.height } ?: sizes.minByOrNull { it.width * it.height } ?: return
+        val size = sizes.filter { it.width >= 160 }.minByOrNull { it.width * it.height } ?: sizes.minByOrNull { it.width * it.height } ?: return
+        // najniższy dostępny zakres klatek (np. 5–15 zamiast 30), mniej pracy dla procesora
+        val ranges: Array<Range<Int>>? = cm.getCameraCharacteristics(id).get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES)
+        val fps: Range<Int>? = ranges?.minWithOrNull(compareBy<Range<Int>>({ it.upper }, { it.lower }))
         val rd = ImageReader.newInstance(size.width, size.height, ImageFormat.YUV_420_888, 2)
         rd.setOnImageAvailableListener({ onImage(it) }, h)
         reader = rd
@@ -46,8 +56,12 @@ class MotionDetector(
                 d.createCaptureSession(listOf(rd.surface), object : CameraCaptureSession.StateCallback() {
                     override fun onConfigured(s: CameraCaptureSession) {
                         session = s
-                        val req = d.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply { addTarget(rd.surface) }.build()
-                        s.setRepeatingRequest(req, null, h)
+                        val req = d.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
+                            addTarget(rd.surface)
+                            if (fps != null) set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, fps)
+                        }.build()
+                        request = req
+                        if (!paused) try { s.setRepeatingRequest(req, null, h) } catch (_: Exception) {}
                     }
                     override fun onConfigureFailed(s: CameraCaptureSession) {}
                 }, h)
@@ -61,7 +75,7 @@ class MotionDetector(
         val img = r.acquireLatestImage() ?: return
         try {
             val now = SystemClock.elapsedRealtime()
-            if (now - last < 400) return
+            if (paused || now - last < 400) return
             last = now
             val pl = img.planes[0]; val buf = pl.buffer; val rs = pl.rowStride
             val w = img.width; val hg = img.height
@@ -82,6 +96,23 @@ class MotionDetector(
                 }
             }
         } finally { img.close() }
+    }
+
+    /** Wstrzymanie kamery, gdy ktoś używa ekranu (ruch i tak nie jest wtedy potrzebny). */
+    fun pause() {
+        if (paused) return
+        paused = true
+        h.post { try { session?.stopRepeating() } catch (_: Exception) {}; prev = null }
+    }
+
+    fun resume() {
+        if (!paused) return
+        paused = false
+        h.post {
+            prev = null
+            val s = session; val r = request
+            if (s != null && r != null) try { s.setRepeatingRequest(r, null, h) } catch (_: Exception) {}
+        }
     }
 
     fun stop() {

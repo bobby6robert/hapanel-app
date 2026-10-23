@@ -27,6 +27,10 @@ Do pełnej obsługi z poziomu HA służy integracja: **[hapanel-integration](htt
 
 „Uśpienie” ekranu to czarna nakładka z minimalną jasnością. Bez roota Android nie pozwala naprawdę wyłączyć ekranu.
 
+## Nowości w 2.6
+- Oszczędniejsze wykrywanie ruchu (jak w Fully): najmniejsza rozdzielczość i najniższa liczba klatek kamery,
+  a kamera jest wstrzymana, gdy ktoś używa ekranu (dotyk w ciągu 30 s). Panel działa płynniej.
+
 ## Nowości w 2.5
 
 Połączenie wersji 2.4 (v1) i 2.4 (v2):
