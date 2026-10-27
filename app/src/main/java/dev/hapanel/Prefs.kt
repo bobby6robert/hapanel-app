@@ -40,6 +40,19 @@ object Prefs {
     var nightBrightness: Int get() = sp.getInt("nightBrightness", 10); set(v) = p("nightBrightness", v)
     var nightWakeSec: Int get() = sp.getInt("nightWakeSec", 60); set(v) = p("nightWakeSec", v)
 
+    // Aurora – rozmowa głosowa (2.7)
+    var talkButton: Boolean get() = sp.getBoolean("talkButton", true); set(v) = p("talkButton", v)
+    var wakeWord: Boolean get() = sp.getBoolean("wakeWord", false); set(v) = p("wakeWord", v)
+    var wakeWordText: String get() = s("wakeWordText", "aurora"); set(v) = p("wakeWordText", v)
+    var wakeQuietStart: String get() = s("wakeQuietStart", "22:00"); set(v) = p("wakeQuietStart", v)
+    var wakeQuietEnd: String get() = s("wakeQuietEnd", "06:30"); set(v) = p("wakeQuietEnd", v)
+    var wakePresenceOnly: Boolean get() = sp.getBoolean("wakePresenceOnly", true); set(v) = p("wakePresenceOnly", v)
+    var proximityTalk: Boolean get() = sp.getBoolean("proximityTalk", true); set(v) = p("proximityTalk", v)
+    var listenWaitSec: Int get() = sp.getInt("listenWaitSec", 8); set(v) = p("listenWaitSec", v)
+    var listenMaxSec: Int get() = sp.getInt("listenMaxSec", 30); set(v) = p("listenMaxSec", v)
+    var silenceMs: Int get() = sp.getInt("silenceMs", 1200); set(v) = p("silenceMs", v)
+    var voiceEnabled: Boolean get() = sp.getBoolean("voiceEnabled", true); set(v) = p("voiceEnabled", v)
+
     // PIN (tylko skrót z solą) i blokada po błędach
     var pinHash: String get() = s("pinHash"); set(v) = p("pinHash", v)
     var pinSalt: String get() = s("pinSalt"); set(v) = p("pinSalt", v)

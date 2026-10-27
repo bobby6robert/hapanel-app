@@ -380,6 +380,27 @@ class SettingsActivity : Activity() {
             { Prefs.nightWakeSec.toString() }, { Prefs.nightWakeSec = (it.toIntOrNull() ?: 60).coerceAtLeast(10) }, num = true))
         content.addView(cNight)
 
+        // Aurora – rozmowa głosowa (tryb rodzica: ustawienia są za PIN-em)
+        val cVoice = card("Aurora – rozmowa głosowa")
+        cVoice.addView(label("Rozmowa po komunikatach, przycisk ✦, słowo wybudzające i machnięcie ręką. Rozumienie mowy i odpowiedzi robi Home Assistant (integracja HA Panel 1.6+).", 13f))
+        addSwitch(cVoice, O("Rozmowa z Aurorą włączona", { Prefs.voiceEnabled }, { Prefs.voiceEnabled = it }))
+        addSwitch(cVoice, O("Przycisk ✦ „Porozmawiaj z Aurorą”", { Prefs.talkButton }, { Prefs.talkButton = it }))
+        addSwitch(cVoice, O("Dwa machnięcia ręką = rozmowa", { Prefs.proximityTalk }, { Prefs.proximityTalk = it }))
+        addSwitch(cVoice, O("Słowo wybudzające (offline, pobiera model ~50 MB)", { Prefs.wakeWord }, { Prefs.wakeWord = it }))
+        addSwitch(cVoice, O("Słowo tylko, gdy ktoś jest przy tablecie", { Prefs.wakePresenceOnly }, { Prefs.wakePresenceOnly = it }))
+        addField(cVoice, F("Słowo wybudzające", "Domyślnie: aurora (małe litery)",
+            { Prefs.wakeWordText }, { if (it.isNotBlank()) Prefs.wakeWordText = it.trim().lowercase() }))
+        addField(cVoice, F("Cisza nocna – od", "Słowo wybudzające nie działa, np. 22:00",
+            { Prefs.wakeQuietStart }, { if (timeRe.matches(it.trim())) Prefs.wakeQuietStart = it.trim() }))
+        addField(cVoice, F("Cisza nocna – do", "np. 06:30",
+            { Prefs.wakeQuietEnd }, { if (timeRe.matches(it.trim())) Prefs.wakeQuietEnd = it.trim() }))
+        addField(cVoice, F("Czekaj na odpowiedź (sekundy)", "Po komunikacie: ile czekać, aż ktoś zacznie mówić (3-30)",
+            { Prefs.listenWaitSec.toString() }, { Prefs.listenWaitSec = (it.toIntOrNull() ?: 8).coerceIn(3, 30) }, num = true))
+        addField(cVoice, F("Koniec wypowiedzi po ciszy (ms)", "Domyślnie 1200",
+            { Prefs.silenceMs.toString() }, { Prefs.silenceMs = (it.toIntOrNull() ?: 1200).coerceIn(500, 4000) }, num = true))
+        cVoice.addView(pill("Test rozmowy", false, MINT) { Voice.start(this, source = "button") }, lp(WRAP_CONTENT, WRAP_CONTENT, top = dp(14)))
+        content.addView(cVoice)
+
         // kopia ustawień
         val cBackup = card("Kopia ustawień")
         cBackup.addView(label("Eksport zawiera ustawienia bez PIN-u, tokenów i adresu webhooka.", 13f))

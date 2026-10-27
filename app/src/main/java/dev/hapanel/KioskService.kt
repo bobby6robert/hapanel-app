@@ -34,8 +34,6 @@ import kotlin.math.ln
 
 class KioskService : Service() {
     private var server: HttpServer? = null
-    private var tts: TextToSpeech? = null
-    private var ttsReady = false
     private var motion: MotionDetector? = null
     private var player: MediaPlayer? = null
     private var wakeLock: PowerManager.WakeLock? = null
@@ -56,6 +54,7 @@ class KioskService : Service() {
     private var lowSent = false
     @Volatile private var proxPresent = false
     @Volatile private var proxNear = false
+    private var lastNear = 0L
 
     private val batteryRcv = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) { readBattery(i); checkLowBattery(); push() }
@@ -82,6 +81,12 @@ class KioskService : Service() {
             if (near) {
                 Controller.touch()
                 if (Prefs.wakeOnProximity) Controller.wake()
+                // dwa machnięcia ręką w ciągu 2 s = rozmowa z Aurorą
+                val now = SystemClock.elapsedRealtime()
+                if (Prefs.proximityTalk && Prefs.voiceEnabled && now - lastNear < 2000 && !Voice.busy()) {
+                    lastNear = 0L
+                    Voice.start(this@KioskService, source = "proximity")
+                } else lastNear = now
             }
             Events.send("proximity", "state" to near)
             push()
@@ -103,14 +108,8 @@ class KioskService : Service() {
         val wm = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
         wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "hapanel:wifi").apply { setReferenceCounted(false); acquire() }
 
-        tts = TextToSpeech(this) { st ->
-            if (st == TextToSpeech.SUCCESS) {
-                val pl = Locale("pl", "PL")
-                val ok = (tts?.isLanguageAvailable(pl) ?: TextToSpeech.LANG_NOT_SUPPORTED) >= TextToSpeech.LANG_AVAILABLE
-                tts?.language = if (ok) pl else Locale.getDefault()
-                ttsReady = true
-            }
-        }
+        Speech.init(this)
+        Voice.onState = { push() }
         registerReceiver(batteryRcv, IntentFilter(Intent.ACTION_BATTERY_CHANGED))?.let { readBattery(it) }
 
         sm = getSystemService(SENSOR_SERVICE) as SensorManager
@@ -136,7 +135,7 @@ class KioskService : Service() {
 
     override fun onDestroy() {
         Controller.onChange = null
-        server?.stop(); motion?.stop(); tts?.shutdown(); exec.shutdownNow()
+        server?.stop(); motion?.stop(); Voice.stop(); WakeWord.release(); Speech.shutdown(); exec.shutdownNow()
         try { nsdListener?.let { nsd?.unregisterService(it) } } catch (_: Exception) {}
         try { player?.release() } catch (_: Exception) {}
         try { unregisterReceiver(batteryRcv); sm.unregisterListener(lightListener); sm.unregisterListener(proxListener) } catch (_: Exception) {}
@@ -192,6 +191,11 @@ class KioskService : Service() {
         if (night) {
             if (!Controller.clock && !Controller.sleeping && idle > Prefs.nightWakeSec * 1000L) Controller.showClock()
         } else if (Controller.clock) Controller.hideClock()
+        // słowo „Aurora”: tylko gdy włączone, poza ciszą nocną i (opcjonalnie) gdy ktoś jest przy tablecie
+        val present = motionActive || idle < 120_000L
+        val allowWake = Prefs.voiceEnabled && Prefs.wakeWord &&
+            !inWindow(Prefs.wakeQuietStart, Prefs.wakeQuietEnd) && (!Prefs.wakePresenceOnly || present)
+        try { WakeWord.tick(this, allowWake) } catch (_: Throwable) {}
         val c = Calendar.getInstance()
         val day = c.get(Calendar.DAY_OF_YEAR)
         if (c.get(Calendar.HOUR_OF_DAY) == 3 && c.get(Calendar.MINUTE) >= 30 && day != lastNightReloadDay) {
@@ -205,9 +209,12 @@ class KioskService : Service() {
         parts[0].toInt() * 60 + parts[1].toInt()
     } catch (_: Exception) { def }
 
-    private fun inNightWindow(): Boolean {
-        val s = parseMin(Prefs.nightStart, 22 * 60)
-        val e = parseMin(Prefs.nightEnd, 6 * 60 + 30)
+    private fun inNightWindow(): Boolean = inWindow(Prefs.nightStart, Prefs.nightEnd)
+
+    private fun inWindow(start: String, end: String): Boolean {
+        val s = parseMin(start, 22 * 60)
+        val e = parseMin(end, 6 * 60 + 30)
+        if (s == e) return false
         val c = Calendar.getInstance()
         val now = c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE)
         return if (s <= e) now in s until e else (now >= s || now < e)
@@ -231,7 +238,21 @@ class KioskService : Service() {
             "/wake" -> Controller.wake()
             "/tts" -> { if (p["wake"] == "1") Controller.wake()
                 p["volume"]?.toIntOrNull()?.let { setVolume(it) }
-                if (ttsReady) tts?.speak(p["text"] ?: "", TextToSpeech.QUEUE_FLUSH, null, "ha") }
+                Speech.say(p["text"] ?: "") }
+            "/converse" -> {   // komunikat Aurory (dźwięk z HA albo tekst), potem nasłuch odpowiedzi
+                p["volume"]?.toIntOrNull()?.let { setVolume(it) }
+                val listen = p["listen"] != "0"
+                val wait = p["wait"]?.toIntOrNull() ?: Prefs.listenWaitSec
+                val person = p["person"] ?: ""
+                val url = p["url"] ?: ""
+                if (url.isNotBlank()) Voice.start(this, firstAudio = url, person = person, waitSec = wait, source = "announce", listen = listen)
+                else {
+                    Controller.wake()
+                    Speech.say(p["text"] ?: "") { if (listen) Voice.start(this, person = person, waitSec = wait, source = "announce") }
+                }
+            }
+            "/listen" -> Voice.start(this, person = p["person"] ?: "", waitSec = p["wait"]?.toIntOrNull() ?: Prefs.listenWaitSec, source = "ha")
+            "/stoptalk" -> Voice.stop()
             "/playsound" -> { val u = p["url"] ?: return 400 to """{"error":"url"}"""
                 playSound(u, p["volume"]?.toIntOrNull()) }
             "/stopsound" -> Controller.ui.post { stopSoundNow(); push() }
@@ -334,6 +355,9 @@ class KioskService : Service() {
             .put("webhook", Prefs.webhookUrl.isNotBlank())
             .put("night_enabled", Prefs.nightEnabled)
             .put("fallback", Controller.fallback)
+            .put("voice", Voice.state.name.lowercase())
+            .put("voice_enabled", Prefs.voiceEnabled)
+            .put("wake_word", WakeWord.status)
             .apply { if (proxPresent) put("proximity", proxNear) }
             .toString()
     }

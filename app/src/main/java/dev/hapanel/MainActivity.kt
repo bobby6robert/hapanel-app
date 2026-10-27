@@ -41,6 +41,8 @@ class MainActivity : Activity() {
     private lateinit var clockTemps: TextView
     private lateinit var clockInfoV: TextView
     private lateinit var popupTitle: TextView
+    private lateinit var aurora: AuroraView
+    private lateinit var talkBtn: TextView
     private var taps = 0
     private var firstTap = 0L
     private var retryPending = false
@@ -204,6 +206,31 @@ class MainActivity : Activity() {
         tl.setMargins(dp(14), dp(14), 0, 0)
         popupLayer.addView(popupTitle, tl)
         root.addView(popupLayer, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+
+        // --- Aurora: zorza podczas rozmowy (dotknięcie kończy rozmowę) ---
+        aurora = AuroraView(this)
+        aurora.visibility = View.GONE
+        aurora.isClickable = true
+        aurora.setOnClickListener { Voice.stop() }
+        root.addView(aurora, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+
+        // --- przycisk „Porozmawiaj z Aurorą” ---
+        talkBtn = TextView(this)
+        talkBtn.text = "✦"
+        talkBtn.textSize = 26f
+        talkBtn.gravity = Gravity.CENTER
+        talkBtn.setTextColor(Color.parseColor("#7CF3D4"))
+        val tb = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+            intArrayOf(Color.argb(200, 20, 60, 70), Color.argb(200, 60, 30, 90)))
+        tb.shape = GradientDrawable.OVAL
+        tb.setStroke(dp(1), Color.argb(160, 124, 243, 212))
+        talkBtn.background = tb
+        talkBtn.elevation = dp(6).toFloat()
+        talkBtn.contentDescription = "Porozmawiaj z Aurorą"
+        talkBtn.setOnClickListener { Voice.start(this, source = "button") }
+        val tl2 = FrameLayout.LayoutParams(dp(64), dp(64), Gravity.BOTTOM or Gravity.END)
+        tl2.setMargins(0, 0, dp(18), dp(18))
+        root.addView(talkBtn, tl2)
 
         // --- czarna nakładka (uśpienie) ---
         overlay = View(this)
@@ -429,6 +456,17 @@ class MainActivity : Activity() {
         window.attributes = lp
         overlay.visibility = if (Controller.sleeping) View.VISIBLE else View.GONE
         clockLayer.visibility = if (Controller.clock) View.VISIBLE else View.GONE
+        updateVoice()
+    }
+
+    /** Zorza i przycisk rozmowy zależnie od stanu Aurory. */
+    fun updateVoice() {
+        if (!::aurora.isInitialized) return
+        val talking = Voice.state != Voice.State.IDLE
+        if (talking && aurora.visibility != View.VISIBLE) { aurora.visibility = View.VISIBLE; aurora.invalidate() }
+        else if (!talking && aurora.visibility == View.VISIBLE) aurora.visibility = View.GONE
+        talkBtn.visibility = if (Prefs.talkButton && Prefs.voiceEnabled && !talking && !Controller.sleeping && !Controller.clock)
+            View.VISIBLE else View.GONE
     }
 
     override fun onResume() {
@@ -463,7 +501,8 @@ class MainActivity : Activity() {
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        if (popupLayer.visibility == View.VISIBLE) closePopup()
+        if (Voice.state != Voice.State.IDLE) Voice.stop()
+        else if (popupLayer.visibility == View.VISIBLE) closePopup()
         else if (web.canGoBack()) web.goBack()
     }
 }

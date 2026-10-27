@@ -27,6 +27,18 @@ object ConfigApply {
         p["nightEnd"]?.takeIf { timeRe.matches(it.trim()) }?.let { Prefs.nightEnd = it.trim() }
         p["nightBrightness"]?.toIntOrNull()?.let { Prefs.nightBrightness = it.coerceIn(1, 255) }
         p["nightWake"]?.toIntOrNull()?.let { Prefs.nightWakeSec = it.coerceAtLeast(10) }
+        // Aurora – rozmowa głosowa
+        p["voice"]?.let { Prefs.voiceEnabled = it == "1" }
+        p["talkButton"]?.let { Prefs.talkButton = it == "1"; Controller.ui.post { Controller.activity?.applyScreen() } }
+        p["wakeWord"]?.let { Prefs.wakeWord = it == "1" }
+        p["wakeWordText"]?.takeIf { it.isNotBlank() }?.let { Prefs.wakeWordText = it.trim().lowercase() }
+        p["wakeQuietStart"]?.takeIf { timeRe.matches(it.trim()) }?.let { Prefs.wakeQuietStart = it.trim() }
+        p["wakeQuietEnd"]?.takeIf { timeRe.matches(it.trim()) }?.let { Prefs.wakeQuietEnd = it.trim() }
+        p["wakePresenceOnly"]?.let { Prefs.wakePresenceOnly = it == "1" }
+        p["proximityTalk"]?.let { Prefs.proximityTalk = it == "1" }
+        p["listenWait"]?.toIntOrNull()?.let { Prefs.listenWaitSec = it.coerceIn(3, 30) }
+        p["listenMax"]?.toIntOrNull()?.let { Prefs.listenMaxSec = it.coerceIn(5, 60) }
+        p["silenceMs"]?.toIntOrNull()?.let { Prefs.silenceMs = it.coerceIn(500, 4000) }
         var look = false
         p["css"]?.let { Prefs.injectCss = it; look = true }
         p["js"]?.let { Prefs.injectJs = it; look = true }
@@ -61,4 +73,15 @@ object ConfigApply {
         .put("css", Prefs.injectCss)
         .put("js", Prefs.injectJs)
         .put("zoom", Prefs.zoom.toString())
+        .put("voice", b(Prefs.voiceEnabled))
+        .put("talkButton", b(Prefs.talkButton))
+        .put("wakeWord", b(Prefs.wakeWord))
+        .put("wakeWordText", Prefs.wakeWordText)
+        .put("wakeQuietStart", Prefs.wakeQuietStart)
+        .put("wakeQuietEnd", Prefs.wakeQuietEnd)
+        .put("wakePresenceOnly", b(Prefs.wakePresenceOnly))
+        .put("proximityTalk", b(Prefs.proximityTalk))
+        .put("listenWait", Prefs.listenWaitSec.toString())
+        .put("listenMax", Prefs.listenMaxSec.toString())
+        .put("silenceMs", Prefs.silenceMs.toString())
 }

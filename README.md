@@ -27,6 +27,16 @@ Do pełnej obsługi z poziomu HA służy integracja: **[hapanel-integration](htt
 
 „Uśpienie” ekranu to czarna nakładka z minimalną jasnością. Bez roota Android nie pozwala naprawdę wyłączyć ekranu.
 
+## Nowości w 2.7 – Aurora (rozmowa głosowa)
+Wymaga integracji **hapanel 1.6** w Home Assistant.
+- **Rozmowa z tabletem:** po komunikacie (`/converse`) tablet sam słucha odpowiedzi, a rozmowa trwa, dopóki ktoś mówi. Koniec po ciszy albo po pożegnaniu („pa”, „dobranoc”).
+- **Sposoby rozpoczęcia:** przycisk ✦ „Porozmawiaj z Aurorą”, **słowo wybudzające** (domyślnie „aurora”, rozpoznawane w całości na tablecie – model Vosk ~50 MB pobierany raz), **dwa machnięcia ręką** nad czujnikiem zbliżeniowym, usługa z HA (`/listen`).
+- **Wykrywanie mowy na tablecie:** czeka na początek mowy (domyślnie 8 s), nagrywa do ciszy (1,2 s, maks. 30 s) i wysyła WAV do webhooka integracji. Rozpoznanie mowy, odpowiedź AI i głos robi Home Assistant.
+- **„Twarz” Aurory:** pełnoekranowa zorza polarna, która reaguje na głos (słucha / myśli / mówi). Dotknięcie kończy rozmowę.
+- **Prywatność:** słowo wybudzające działa tylko poza ciszą nocną (domyślnie 22:00–6:30) i opcjonalnie tylko, gdy ktoś jest przy tablecie. Dźwięk nie opuszcza tabletu, dopóki słowo nie padnie.
+- Nowa sekcja ustawień „Aurora – rozmowa głosowa” (za PIN-em), nowe pola w `/status`: `voice`, `voice_enabled`, `wake_word`.
+- Nowe adresy API: `/converse?url=…&text=…&person=…&listen=1&wait=8`, `/listen?person=…`, `/stoptalk`.
+
 ## Nowości w 2.6
 - Oszczędniejsze wykrywanie ruchu (jak w Fully): najmniejsza rozdzielczość i najniższa liczba klatek kamery,
   a kamera jest wstrzymana, gdy ktoś używa ekranu (dotyk w ciągu 30 s). Panel działa płynniej.

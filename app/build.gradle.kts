@@ -2,7 +2,7 @@ plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 android {
     namespace = "dev.hapanel"
     compileSdk = 34
-    defaultConfig { applicationId = "dev.hapanel"; minSdk = 26; targetSdk = 33; versionCode = 8; versionName = "2.6" }
+    defaultConfig { applicationId = "dev.hapanel"; minSdk = 26; targetSdk = 33; versionCode = 9; versionName = "2.7" }
     signingConfigs {
         getByName("debug") {
             storeFile = file("debug.keystore")
@@ -13,4 +13,10 @@ android {
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
+    packaging { jniLibs { useLegacyPackaging = true } }
+}
+dependencies {
+    // rozpoznawanie słowa „Aurora” na tablecie (offline)
+    implementation("com.alphacephei:vosk-android:0.3.47@aar")
+    implementation("net.java.dev.jna:jna:5.13.0@aar")
 }
