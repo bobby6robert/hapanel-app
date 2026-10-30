@@ -27,6 +27,14 @@ Do pełnej obsługi z poziomu HA służy integracja: **[hapanel-integration](htt
 
 „Uśpienie” ekranu to czarna nakładka z minimalną jasnością. Bez roota Android nie pozwala naprawdę wyłączyć ekranu.
 
+## Nowości w 2.8 – łatwiejsze aktualizacje
+- APK jest wersją końcową podpisaną stałym kluczem wydań (zamiast klucza testowego). Mniej ostrzeżeń Play Protect.
+- Podczas aktualizacji panel nie przypina się z powrotem i nie zasłania okna instalatora.
+- Gdy aktualizacja się nie uda, tablet pokazuje powód (np. inny podpis, Play Protect, brak miejsca).
+- Android 12+: aktualizacja bez dodatkowego pytania.
+- **Jednorazowo:** przy przejściu z 2.7 na 2.8 trzeba ręcznie odinstalować starą wersję (zmiana klucza). Kolejne aktualizacje już bez tego.
+- Budowanie wydań wymaga sekretu repozytorium `HAPANEL_KEYSTORE` (plik klucza PKCS12 w base64, hasło `hapanel`).
+
 ## Nowości w 2.7 – Aurora (rozmowa głosowa)
 Wymaga integracji **hapanel 1.6** w Home Assistant.
 - **Rozmowa z tabletem:** po komunikacie (`/converse`) tablet sam słucha odpowiedzi, a rozmowa trwa, dopóki ktoś mówi. Koniec po ciszy albo po pożegnaniu („pa”, „dobranoc”).

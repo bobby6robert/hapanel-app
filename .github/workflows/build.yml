@@ -15,12 +15,20 @@ jobs:
         with: { distribution: temurin, java-version: 17 }
       - uses: gradle/actions/setup-gradle@v3
         with: { gradle-version: 8.7 }
-      - run: gradle assembleDebug
+      - name: Klucz wydań z sekretu
+        env:
+          KS: ${{ secrets.HAPANEL_KEYSTORE }}
+        run: |
+          if [ -z "$KS" ]; then echo "Brak sekretu HAPANEL_KEYSTORE - nie buduję wydania"; exit 1; fi
+          echo "$KS" | base64 -d > "$RUNNER_TEMP/hapanel.p12"
+          echo "HAPANEL_KEYSTORE_FILE=$RUNNER_TEMP/hapanel.p12" >> "$GITHUB_ENV"
+      - run: gradle assembleRelease
+      - run: cp app/build/outputs/apk/release/app-release.apk hapanel.apk
       - uses: actions/upload-artifact@v4
-        with: { name: hapanel-apk, path: app/build/outputs/apk/debug/*.apk }
+        with: { name: hapanel-apk, path: hapanel.apk }
       - name: Dołącz APK do wydania
         if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$TAG" app/build/outputs/apk/debug/app-debug.apk --clobber
+        run: gh release upload "$TAG" hapanel.apk --clobber
