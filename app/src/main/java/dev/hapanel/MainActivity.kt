@@ -473,7 +473,7 @@ class MainActivity : Activity() {
         super.onResume()
         Controller.activity = this
         applyScreen()
-        if (Prefs.lockTask) try { startLockTask() } catch (_: Exception) {}
+        if (Prefs.lockTask && !Updater.installing) try { startLockTask() } catch (_: Exception) {}
     }
 
     override fun onDestroy() { if (Controller.activity === this) Controller.activity = null; super.onDestroy() }
