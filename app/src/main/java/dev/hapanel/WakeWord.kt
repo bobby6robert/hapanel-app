@@ -18,6 +18,9 @@ import java.util.zip.ZipInputStream
  * pobierany raz przy pierwszym włączeniu). Dźwięk nie opuszcza tabletu, dopóki słowo nie padnie.
  */
 object WakeWord {
+    /** Minimalna pewność rozpoznania słowa (0–1). Mniej = czulej, więcej fałszywych wybudzeń. */
+    private const val MIN_CONF = 0.8
+
     private const val MODEL_URL = "https://alphacephei.com/vosk/models/vosk-model-small-pl-0.22.zip"
     private const val MODEL_DIR = "vosk-pl"
 
@@ -46,6 +49,7 @@ object WakeWord {
             val word = Prefs.wakeWordText.ifBlank { "aurora" }
             val grammar = "[\"" + word.replace("\"", "") + "\", \"[unk]\"]"
             val rec = Recognizer(m, 16000f, grammar)
+            rec.setWords(true)
             val s = SpeechService(rec, 16000f)
             s.startListening(listener)
             service = s
@@ -66,7 +70,8 @@ object WakeWord {
     }
 
     private val listener = object : RecognitionListener {
-        override fun onPartialResult(hypothesis: String?) { check(hypothesis, "partial") }
+        // Wyniki częściowe są „nerwowe” (hałas, TV) – wybudzamy tylko na wyniku końcowym z pewnością słowa
+        override fun onPartialResult(hypothesis: String?) {}
         override fun onResult(hypothesis: String?) { check(hypothesis, "text") }
         override fun onFinalResult(hypothesis: String?) {}
         override fun onError(exception: Exception?) { release(); status = "error" }
@@ -75,9 +80,18 @@ object WakeWord {
 
     private fun check(json: String?, key: String) {
         if (json == null) return
-        val txt = try { JSONObject(json).optString(key) } catch (_: Exception) { "" }
         val word = Prefs.wakeWordText.ifBlank { "aurora" }
-        if (!txt.contains(word)) return
+        val ok = try {
+            val o = JSONObject(json)
+            val words = o.optJSONArray("result")
+            if (words != null && words.length() > 0) {
+                (0 until words.length()).any { i ->
+                    val w = words.getJSONObject(i)
+                    w.optString("word") == word && w.optDouble("conf", 0.0) >= MIN_CONF
+                }
+            } else o.optString(key).contains(word)
+        } catch (_: Exception) { false }
+        if (!ok) return
         val now = System.currentTimeMillis()
         if (now - lastHit < 3000) return
         lastHit = now
