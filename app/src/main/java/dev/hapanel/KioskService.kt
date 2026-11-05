@@ -48,6 +48,7 @@ class KioskService : Service() {
     @Volatile private var battery = -1
     @Volatile private var charging = false
     @Volatile private var motionActive = false
+    private var lastMotion = 0L
     @Volatile private var playing = false
     @Volatile private var batteryTemp = -100.0
     @Volatile private var batteryHealth = "unknown"
@@ -191,11 +192,14 @@ class KioskService : Service() {
         if (night) {
             if (!Controller.clock && !Controller.sleeping && idle > Prefs.nightWakeSec * 1000L) Controller.showClock()
         } else if (Controller.clock) Controller.hideClock()
-        // słowo „Aurora”: tylko gdy włączone, poza ciszą nocną i (opcjonalnie) gdy ktoś jest przy tablecie
-        val present = motionActive || idle < 120_000L
+        // słowo „Aurora”: poza ciszą nocną i (opcjonalnie) tylko gdy kamera widzi ruch (2.10: bez dotyku)
+        if (motionActive) lastMotion = now
+        val present = now - lastMotion < 60_000L
         val allowWake = Prefs.voiceEnabled && Prefs.wakeWord &&
             !inWindow(Prefs.wakeQuietStart, Prefs.wakeQuietEnd) && (!Prefs.wakePresenceOnly || present)
-        try { WakeWord.tick(this, allowWake) } catch (_: Throwable) {}
+        // słowo „Dom”: krótkie polecenia dla domu, słychać je z całego pomieszczenia (bez kamery)
+        val allowHome = Prefs.voiceEnabled && Prefs.homeWord
+        try { WakeWord.tick(this, allowWake, allowHome) } catch (_: Throwable) {}
         val c = Calendar.getInstance()
         val day = c.get(Calendar.DAY_OF_YEAR)
         if (c.get(Calendar.HOUR_OF_DAY) == 3 && c.get(Calendar.MINUTE) >= 30 && day != lastNightReloadDay) {

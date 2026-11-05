@@ -46,6 +46,8 @@ object Prefs {
     var wakeWordText: String get() = s("wakeWordText", "aurora"); set(v) = p("wakeWordText", v)
     var wakeQuietStart: String get() = s("wakeQuietStart", "22:00"); set(v) = p("wakeQuietStart", v)
     var wakeQuietEnd: String get() = s("wakeQuietEnd", "06:30"); set(v) = p("wakeQuietEnd", v)
+    var homeWord: Boolean get() = sp.getBoolean("homeWord", true); set(v) = p("homeWord", v)
+    var homeWordText: String get() = s("homeWordText", "dom"); set(v) = p("homeWordText", v)
     var wakePresenceOnly: Boolean get() = sp.getBoolean("wakePresenceOnly", true); set(v) = p("wakePresenceOnly", v)
     var proximityTalk: Boolean get() = sp.getBoolean("proximityTalk", true); set(v) = p("proximityTalk", v)
     var listenWaitSec: Int get() = sp.getInt("listenWaitSec", 8); set(v) = p("listenWaitSec", v)
