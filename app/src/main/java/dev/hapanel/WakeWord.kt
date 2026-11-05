@@ -20,6 +20,8 @@ import java.util.zip.ZipInputStream
 object WakeWord {
     /** Minimalna pewność rozpoznania słowa (0–1). Mniej = czulej, więcej fałszywych wybudzeń. */
     private const val MIN_CONF = 0.8
+    /** Słowo „dom” jest krótkie i częste w mowie – wyższy próg pewności. */
+    private const val MIN_CONF_HOME = 0.9
 
     private const val MODEL_URL = "https://alphacephei.com/vosk/models/vosk-model-small-pl-0.22.zip"
     private const val MODEL_DIR = "vosk-pl"
@@ -30,15 +32,21 @@ object WakeWord {
     private var service: SpeechService? = null
     @Volatile private var loading = false
     private var lastHit = 0L
+    @Volatile private var active: List<String> = emptyList()
     @Volatile private var lastFail = 0L
 
     fun active() = service != null
 
     /** Wywoływane co kilka sekund z serwisu: włącza/wyłącza nasłuch zależnie od warunków. */
     @Synchronized
-    fun tick(ctx: Context, allowed: Boolean) {
+    fun tick(ctx: Context, allowWake: Boolean, allowHome: Boolean = false) {
+        val allowed = allowWake || allowHome
         if (!allowed || Voice.busy()) { if (service != null) release(); if (!allowed && status != "error") status = "off"; return }
-        if (service != null) return
+        val words = listOfNotNull(
+            Prefs.wakeWordText.ifBlank { "aurora" }.takeIf { allowWake },
+            Prefs.homeWordText.ifBlank { "dom" }.takeIf { allowHome })
+        if (service != null && words == active) return
+        if (service != null) release()
         if (ctx.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { status = "error"; return }
         val m = model
         if (m == null) {
@@ -46,13 +54,13 @@ object WakeWord {
             return
         }
         try {
-            val word = Prefs.wakeWordText.ifBlank { "aurora" }
-            val grammar = "[\"" + word.replace("\"", "") + "\", \"[unk]\"]"
+            val grammar = "[" + words.joinToString(", ") { "\"" + it.replace("\"", "") + "\"" } + ", \"[unk]\"]"
             val rec = Recognizer(m, 16000f, grammar)
             rec.setWords(true)
             val s = SpeechService(rec, 16000f)
             s.startListening(listener)
             service = s
+            active = words
             status = "listening"
         } catch (_: Exception) {
             status = "error"; service = null
@@ -80,18 +88,19 @@ object WakeWord {
 
     private fun check(json: String?, key: String) {
         if (json == null) return
-        val word = Prefs.wakeWordText.ifBlank { "aurora" }
-        val ok = try {
+        val aurora = Prefs.wakeWordText.ifBlank { "aurora" }
+        val home = Prefs.homeWordText.ifBlank { "dom" }
+        // które słowo padło (tylko spośród aktualnie nasłuchiwanych); „dom” jest krótki – wymaga większej pewności
+        val word = try {
             val o = JSONObject(json)
-            val words = o.optJSONArray("result")
-            if (words != null && words.length() > 0) {
-                (0 until words.length()).any { i ->
-                    val w = words.getJSONObject(i)
-                    w.optString("word") == word && w.optDouble("conf", 0.0) >= MIN_CONF
-                }
-            } else o.optString(key).contains(word)
-        } catch (_: Exception) { false }
-        if (!ok) return
+            val res = o.optJSONArray("result")
+            if (res != null && res.length() > 0) {
+                (0 until res.length()).map { res.getJSONObject(it) }.firstOrNull { w ->
+                    val wd = w.optString("word")
+                    wd in active && w.optDouble("conf", 0.0) >= (if (wd == home) MIN_CONF_HOME else MIN_CONF)
+                }?.optString("word")
+            } else active.firstOrNull { o.optString(key).split(" ").contains(it) }
+        } catch (_: Exception) { null } ?: return
         val now = System.currentTimeMillis()
         if (now - lastHit < 3000) return
         lastHit = now
@@ -99,7 +108,8 @@ object WakeWord {
         Controller.ui.post {
             release()
             Events.send("wake_word", "word" to word)
-            Voice.start(ctx, source = "wake")
+            if (word == home && word != aurora) Voice.start(ctx, source = "command", waitSec = 5)
+            else Voice.start(ctx, source = "wake")
         }
     }
 

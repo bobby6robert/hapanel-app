@@ -387,7 +387,8 @@ class SettingsActivity : Activity() {
         addSwitch(cVoice, O("Przycisk ✦ „Porozmawiaj z Aurorą”", { Prefs.talkButton }, { Prefs.talkButton = it }))
         addSwitch(cVoice, O("Dwa machnięcia ręką = rozmowa", { Prefs.proximityTalk }, { Prefs.proximityTalk = it }))
         addSwitch(cVoice, O("Słowo wybudzające (offline, pobiera model ~50 MB)", { Prefs.wakeWord }, { Prefs.wakeWord = it }))
-        addSwitch(cVoice, O("Słowo tylko, gdy ktoś jest przy tablecie", { Prefs.wakePresenceOnly }, { Prefs.wakePresenceOnly = it }))
+        addSwitch(cVoice, O("Słowo „Dom” – szybkie sterowanie domem (np. „Dom, zapal światło w kuchni”)", { Prefs.homeWord }, { Prefs.homeWord = it }))
+        addSwitch(cVoice, O("„Aurora” tylko, gdy kamera widzi ruch", { Prefs.wakePresenceOnly }, { Prefs.wakePresenceOnly = it }))
         addField(cVoice, F("Słowo wybudzające", "Domyślnie: aurora (małe litery)",
             { Prefs.wakeWordText }, { if (it.isNotBlank()) Prefs.wakeWordText = it.trim().lowercase() }))
         addField(cVoice, F("Cisza nocna – od", "Słowo wybudzające nie działa, np. 22:00",

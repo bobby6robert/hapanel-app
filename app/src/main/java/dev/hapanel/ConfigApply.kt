@@ -34,6 +34,8 @@ object ConfigApply {
         p["wakeWordText"]?.takeIf { it.isNotBlank() }?.let { Prefs.wakeWordText = it.trim().lowercase() }
         p["wakeQuietStart"]?.takeIf { timeRe.matches(it.trim()) }?.let { Prefs.wakeQuietStart = it.trim() }
         p["wakeQuietEnd"]?.takeIf { timeRe.matches(it.trim()) }?.let { Prefs.wakeQuietEnd = it.trim() }
+        p["homeWord"]?.let { Prefs.homeWord = it == "1" }
+        p["homeWordText"]?.takeIf { it.isNotBlank() }?.let { Prefs.homeWordText = it.trim().lowercase() }
         p["wakePresenceOnly"]?.let { Prefs.wakePresenceOnly = it == "1" }
         p["proximityTalk"]?.let { Prefs.proximityTalk = it == "1" }
         p["listenWait"]?.toIntOrNull()?.let { Prefs.listenWaitSec = it.coerceIn(3, 30) }
@@ -80,6 +82,8 @@ object ConfigApply {
         .put("wakeQuietStart", Prefs.wakeQuietStart)
         .put("wakeQuietEnd", Prefs.wakeQuietEnd)
         .put("wakePresenceOnly", b(Prefs.wakePresenceOnly))
+        .put("homeWord", b(Prefs.homeWord))
+        .put("homeWordText", Prefs.homeWordText)
         .put("proximityTalk", b(Prefs.proximityTalk))
         .put("listenWait", Prefs.listenWaitSec.toString())
         .put("listenMax", Prefs.listenMaxSec.toString())
