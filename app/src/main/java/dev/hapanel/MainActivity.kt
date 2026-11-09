@@ -446,6 +446,18 @@ class MainActivity : Activity() {
         startForegroundService(Intent(this, KioskService::class.java))
     }
 
+    private var webPaused = false
+
+    /** Włącza ekran, jeśli system go wygasił (dzwonek, wybudzenie z HA, ruch). */
+    @Suppress("DEPRECATION")
+    fun turnScreenOn() {
+        try {
+            val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+            if (!pm.isInteractive) pm.newWakeLock(android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK or
+                android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP, "hapanel:wake").acquire(3000)
+        } catch (_: Exception) {}
+    }
+
     fun applyScreen() {
         val lp = window.attributes
         lp.screenBrightness = when {
@@ -454,6 +466,16 @@ class MainActivity : Activity() {
             else -> Controller.brightness
         }
         window.attributes = lp
+        // 2.11: w trybie oszczędnym ekran może naprawdę zgasnąć (systemowy czas wygaszania)
+        @Suppress("DEPRECATION")
+        if (Controller.deep) window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // strona HA nie rysuje animacji pod nakładką / zegarem
+        val hidden = Controller.sleeping || Controller.clock
+        if (hidden != webPaused) {
+            webPaused = hidden
+            try { if (hidden) { web.onPause(); web.pauseTimers() } else { web.resumeTimers(); web.onResume() } } catch (_: Exception) {}
+        }
         overlay.visibility = if (Controller.sleeping) View.VISIBLE else View.GONE
         clockLayer.visibility = if (Controller.clock) View.VISIBLE else View.GONE
         updateVoice()

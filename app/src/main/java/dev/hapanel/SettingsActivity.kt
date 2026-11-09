@@ -368,6 +368,8 @@ class SettingsActivity : Activity() {
 
         // tryb nocny
         val cNight = card("Tryb nocny (zegar)")
+        addSwitch(cScr, O("Oszczędzanie baterii (na baterii i w nocy ekran naprawdę gaśnie, tablet zasypia)",
+            { Prefs.saverMode != "never" }, { Prefs.saverMode = if (it) "auto" else "never" }))
         addSwitch(cNight, O("Włącz tryb nocny w aplikacji", { Prefs.nightEnabled }, { Prefs.nightEnabled = it }))
         val timeRe = Regex("\\d{1,2}:\\d{2}")
         addField(cNight, F("Początek", "Godzina w formacie GG:MM, np. 22:00",

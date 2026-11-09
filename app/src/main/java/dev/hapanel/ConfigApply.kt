@@ -15,6 +15,7 @@ object ConfigApply {
         p["fallback"]?.let { Prefs.fallbackUrls = it.replace(",", "\n").trim() }
         p["homeAfter"]?.toIntOrNull()?.let { Prefs.homeAfterSec = it }
         p["sleepAfter"]?.toIntOrNull()?.let { Prefs.sleepAfterSec = it }
+        p["saverMode"]?.takeIf { it in setOf("auto", "always", "never") }?.let { Prefs.saverMode = it }
         p["motionThreshold"]?.toIntOrNull()?.let { Prefs.motionThreshold = it }
         p["motion"]?.let { Prefs.motionEnabled = it == "1" }
         p["wakeOnMotion"]?.let { Prefs.wakeOnMotion = it == "1" }
@@ -61,6 +62,7 @@ object ConfigApply {
         .put("fallback", Prefs.fallbackUrls.replace("\n", ","))
         .put("homeAfter", Prefs.homeAfterSec.toString())
         .put("sleepAfter", Prefs.sleepAfterSec.toString())
+        .put("saverMode", Prefs.saverMode)
         .put("motion", b(Prefs.motionEnabled))
         .put("motionThreshold", Prefs.motionThreshold.toString())
         .put("wakeOnMotion", b(Prefs.wakeOnMotion))

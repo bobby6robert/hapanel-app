@@ -24,6 +24,8 @@ object Prefs {
     var apiToken: String get() = s("apiToken"); set(v) = p("apiToken", v)
     var port: Int get() = sp.getInt("port", 8765); set(v) = p("port", v)
     var motionThreshold: Int get() = sp.getInt("motionThreshold", 5); set(v) = p("motionThreshold", v)
+    /** Tryb oszczędny: auto (na baterii i w nocy), always, never. */
+    var saverMode: String get() = s("saverMode", "auto"); set(v) = p("saverMode", v)
     var sleepAfterSec: Int get() = sp.getInt("sleepAfterSec", 0); set(v) = p("sleepAfterSec", v)
     var homeAfterSec: Int get() = sp.getInt("homeAfterSec", 0); set(v) = p("homeAfterSec", v)
     var motionEnabled: Boolean get() = sp.getBoolean("motionEnabled", false); set(v) = p("motionEnabled", v)
