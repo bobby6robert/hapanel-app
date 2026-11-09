@@ -11,6 +11,9 @@ object Controller {
     @Volatile var sleeping = false
     @Volatile var clock = false              // nakładka z zegarem (tryb nocny)
     @Volatile var night = false              // czy trwa okno nocne
+    @Volatile var saver = false              // tryb oszczędny aktywny (bateria / noc)
+    /** Głębokie uśpienie: ekran może naprawdę zgasnąć, strona i nasłuch stoją. */
+    val deep: Boolean get() = saver && (sleeping || clock)
     @Volatile var brightness = -1f           // -1 = jasność systemowa
     @Volatile var lastActivity = SystemClock.elapsedRealtime()
     @Volatile var currentUrl = ""
@@ -54,5 +57,6 @@ object Controller {
         if (sleeping) { sleeping = false; changed = true }
         if (clock) { clock = false; changed = true }
         if (changed) { ui.post { activity?.applyScreen() }; onChange?.invoke() }
+        ui.post { activity?.turnScreenOn() }
     }
 }

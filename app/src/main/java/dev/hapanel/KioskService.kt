@@ -174,10 +174,24 @@ class KioskService : Service() {
     private fun idleTick() {
         val now = SystemClock.elapsedRealtime()
         val idle = now - Controller.lastActivity
-        val s = Prefs.sleepAfterSec
+        // 2.11 tryb oszczędny: na baterii lub w oknie nocnym (dzwonek w nocy jest niepotrzebny)
+        val nightNow = Prefs.nightEnabled && inNightWindow()
+        val saver = when (Prefs.saverMode) { "always" -> true; "never" -> false; else -> !charging || nightNow }
+        if (saver != Controller.saver) { Controller.saver = saver; Controller.ui.post { Controller.activity?.applyScreen() } }
+        setLocks(!saver)
+        // w trybie oszczędnym ekran usypia po 2 min nawet, gdy „usypiaj po” = 0
+        val s = Prefs.sleepAfterSec.let { if (it <= 0 && saver && !nightNow) 120 else it }
         if (s > 0 && !Controller.sleeping && idle > s * 1000L) Controller.sleep()
-        // oszczędzanie: kamera ruchu stoi, gdy ktoś właśnie używa ekranu (dotyk w ciągu 30 s)
-        motion?.let { if (!Controller.sleeping && !Controller.clock && idle < 30_000) it.pause() else it.resume() }
+        // kamera ruchu: stoi przy aktywnym używaniu ekranu i w głębokim uśpieniu; w zwykłym uśpieniu działa zrywami
+        motion?.let {
+            when {
+                Controller.deep -> it.pause()
+                !Controller.sleeping && !Controller.clock && idle < 30_000 -> it.pause()
+                Controller.sleeping || Controller.clock -> { it.resume(); Controller.ui.postDelayed({ if (Controller.sleeping || Controller.clock) it.pause() }, 1500) }
+                else -> it.resume()
+            }
+        }
+        trackDrain(now)
         val h = Prefs.homeAfterSec
         if (h > 0 && idle > h * 1000L && Controller.lastActivity > lastHomed && Prefs.dashboardUrl.isNotBlank()) {
             lastHomed = now
@@ -195,10 +209,10 @@ class KioskService : Service() {
         // słowo „Aurora”: poza ciszą nocną i (opcjonalnie) tylko gdy kamera widzi ruch (2.10: bez dotyku)
         if (motionActive) lastMotion = now
         val present = now - lastMotion < 60_000L
-        val allowWake = Prefs.voiceEnabled && Prefs.wakeWord &&
+        val allowWake = Prefs.voiceEnabled && Prefs.wakeWord && !Controller.deep &&
             !inWindow(Prefs.wakeQuietStart, Prefs.wakeQuietEnd) && (!Prefs.wakePresenceOnly || present)
         // słowo „Dom”: krótkie polecenia dla domu, słychać je z całego pomieszczenia (bez kamery)
-        val allowHome = Prefs.voiceEnabled && Prefs.homeWord
+        val allowHome = Prefs.voiceEnabled && Prefs.homeWord && !Controller.deep
         try { WakeWord.tick(this, allowWake, allowHome) } catch (_: Throwable) {}
         val c = Calendar.getInstance()
         val day = c.get(Calendar.DAY_OF_YEAR)
@@ -206,6 +220,26 @@ class KioskService : Service() {
             lastNightReloadDay = day
             Controller.reload()
         }
+    }
+
+    /** Blokady uśpienia procesora i Wi‑Fi tylko poza trybem oszczędnym. */
+    private fun setLocks(on: Boolean) {
+        try {
+            if (on) { if (wakeLock?.isHeld == false) wakeLock?.acquire(); if (wifiLock?.isHeld == false) wifiLock?.acquire() }
+            else { if (wakeLock?.isHeld == true) wakeLock?.release(); if (wifiLock?.isHeld == true) wifiLock?.release() }
+        } catch (_: Exception) {}
+    }
+
+    // --- diagnostyka baterii: zużycie %/h liczone z ostatniej godziny pracy na baterii ---
+    private val drainSamples = ArrayDeque<Pair<Long, Int>>()
+    @Volatile var drainPerHour = -1.0
+    private fun trackDrain(now: Long) {
+        if (charging || battery < 0) { drainSamples.clear(); return }
+        if (drainSamples.isEmpty() || drainSamples.last().second != battery) drainSamples.addLast(now to battery)
+        while (drainSamples.size > 2 && now - drainSamples.first().first > 3_600_000L) drainSamples.removeFirst()
+        val first = drainSamples.first()
+        val span = now - first.first
+        if (span >= 15 * 60_000L) drainPerHour = Math.round((first.second - battery) * 3_600_000.0 / span * 10) / 10.0
     }
 
     private fun parseMin(s: String, def: Int): Int = try {
@@ -336,6 +370,8 @@ class KioskService : Service() {
             .put("battery", battery).put("charging", charging)
             .put("motion", motionActive).put("lux", lux.toDouble())
             .put("sleeping", Controller.sleeping)
+            .put("saver", Controller.saver).put("deep", Controller.deep)
+            .put("drain", drainPerHour)
             .put("brightness", if (Controller.brightness < 0) -1 else Math.round(Controller.brightness * 255))
             .put("auto", Prefs.autoBrightness)
             .put("volume", am.getStreamVolume(AudioManager.STREAM_MUSIC) * 100 / max)
