@@ -68,6 +68,7 @@ object Prefs {
     var duckLevel: Int get() = sp.getInt("duckLevel", 15); set(v) = p("duckLevel", v)
     var announceVolume: Int get() = sp.getInt("announceVolume", 0); set(v) = p("announceVolume", v)
     // 2.12.1: wygaszacz ekranu
+    var autoClean: Boolean get() = sp.getBoolean("autoClean", true); set(v) = p("autoClean", v)
     var saverEnabled: Boolean get() = sp.getBoolean("saverEnabled", false); set(v) = p("saverEnabled", v)
     /** clock / photos / cameras / black */
     var saverType: String get() = s("saverType", "clock"); set(v) = p("saverType", v)
