@@ -509,17 +509,36 @@ class MainActivity : Activity() {
             View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
     }
 
-    /** 5 szybkich dotknięć w lewym górnym rogu = ustawienia (z PIN-em, jeśli ustawiony). */
+    /** Ustawienia (z PIN-em, jeśli ustawiony): 5 szybkich dotknięć w rogu ekranu (2.12: w dowolnym rogu,
+     *  większe pole) albo przytrzymanie dwoma palcami przez 2 sekundy w dowolnym miejscu. */
+    private val twoFingerHold = Runnable { requestSettings() }
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         Controller.touch()
         if (ev.action == MotionEvent.ACTION_DOWN) Events.touch()
-        if (ev.action == MotionEvent.ACTION_DOWN && ev.x < 150 && ev.y < 150) {
-            val now = SystemClock.elapsedRealtime()
-            if (now - firstTap > 4000) { taps = 0; firstTap = now }
-            if (++taps >= 5) { taps = 0; requestSettings() }
+        if (ev.action == MotionEvent.ACTION_DOWN) {
+            val w = window.decorView.width.toFloat(); val h = window.decorView.height.toFloat()
+            val zone = maxOf(150f, minOf(w, h) * 0.15f)
+            val left = ev.x < zone; val right = ev.x > w - zone
+            val top = ev.y < zone; val bottom = ev.y > h - zone
+            val inCorner = if (Prefs.menuAnyCorner) (left || right) && (top || bottom) else (ev.x < 150 && ev.y < 150)
+            if (inCorner) {
+                val now = SystemClock.elapsedRealtime()
+                if (now - firstTap > 4000) { taps = 0; firstTap = now }
+                if (++taps >= 5) { taps = 0; requestSettings() }
+            }
+        }
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_POINTER_DOWN -> if (Prefs.menuTwoFinger && ev.pointerCount == 2) {
+                Controller.ui.removeCallbacks(twoFingerHold); Controller.ui.postDelayed(twoFingerHold, 2000) }
+            MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                Controller.ui.removeCallbacks(twoFingerHold)
+            MotionEvent.ACTION_MOVE -> if (ev.pointerCount != 2) Controller.ui.removeCallbacks(twoFingerHold)
         }
         return super.dispatchTouchEvent(ev)
     }
+
+    /** 2.12: otwarcie ustawień przyciskiem z HA (polecenie już autoryzowane tokenem integracji). */
+    fun openSettingsFromHa() { Controller.wake(); openSettings() }
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {

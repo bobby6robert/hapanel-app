@@ -391,6 +391,12 @@ class SettingsActivity : Activity() {
         addSwitch(cVoice, O("Słowo wybudzające (offline, pobiera model ~50 MB)", { Prefs.wakeWord }, { Prefs.wakeWord = it }))
         addSwitch(cVoice, O("Słowo „Dom” – szybkie sterowanie domem (np. „Dom, zapal światło w kuchni”)", { Prefs.homeWord }, { Prefs.homeWord = it }))
         addSwitch(cVoice, O("„Aurora” tylko, gdy kamera widzi ruch", { Prefs.wakePresenceOnly }, { Prefs.wakePresenceOnly = it }))
+        addSwitch(cVoice, O("Po komunikacie z HA czekaj na odpowiedź (domyślnie nie)", { Prefs.announceListen }, { Prefs.announceListen = it }))
+        addSwitch(cVoice, O("Milcz, gdy nikogo nie ma w domu", { Prefs.awayMute }, { Prefs.awayMute = it }))
+        addField(cVoice, F("Czułość słowa wybudzającego", "1 = mało czuła (najmniej pomyłek), 2 = średnia, 3 = bardzo czuła",
+            { Prefs.wakeSensitivity.toString() }, { Prefs.wakeSensitivity = (it.toIntOrNull() ?: 2).coerceIn(1, 3) }, num = true))
+        addSwitch(cVoice, O("Menu: 5 dotknięć w dowolnym rogu ekranu", { Prefs.menuAnyCorner }, { Prefs.menuAnyCorner = it }))
+        addSwitch(cVoice, O("Menu: przytrzymanie dwoma palcami przez 2 s", { Prefs.menuTwoFinger }, { Prefs.menuTwoFinger = it }))
         addField(cVoice, F("Słowo wybudzające", "Domyślnie: aurora (małe litery)",
             { Prefs.wakeWordText }, { if (it.isNotBlank()) Prefs.wakeWordText = it.trim().lowercase() }))
         addField(cVoice, F("Cisza nocna – od", "Słowo wybudzające nie działa, np. 22:00",

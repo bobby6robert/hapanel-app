@@ -24,7 +24,7 @@
         </intent>
     </queries>
 
-    <application android:label="HA Panel" android:usesCleartextTraffic="true"
+    <application android:label="HA Panel" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:usesCleartextTraffic="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
         <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize">

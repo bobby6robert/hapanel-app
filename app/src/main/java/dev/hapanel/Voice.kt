@@ -66,6 +66,7 @@ object Voice {
         if (running) { if (firstAudio == null) return; stop(); waitIdle() }
         cancel = false
         running = true
+        Events.send("voice_start", "source" to source)
         setState(State.THINKING, "")
         Controller.wake()
         WakeWord.release()
