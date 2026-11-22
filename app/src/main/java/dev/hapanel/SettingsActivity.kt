@@ -410,6 +410,15 @@ class SettingsActivity : Activity() {
         cVoice.addView(pill("Test rozmowy", false, MINT) { Voice.start(this, source = "button") }, lp(WRAP_CONTENT, WRAP_CONTENT, top = dp(14)))
         content.addView(cVoice)
 
+        val cAnn = card("Komunikaty i telewizor")
+        cAnn.addView(label("Na czas komunikatu Aurory HA ścisza telewizor, a potem przywraca głośność. Telewizor wybierasz w HA (opcje integracji HA Panel).", 13f))
+        addSwitch(cAnn, O("Ściszaj telewizor" + (if (Prefs.duckName.isNotBlank()) " (${Prefs.duckName})" else ""), { Prefs.duckEnabled }, { Prefs.duckEnabled = it }))
+        addField(cAnn, F("Ściszenie telewizora do (%)", "0-100, domyślnie 15",
+            { Prefs.duckLevel.toString() }, { Prefs.duckLevel = (it.toIntOrNull() ?: 15).coerceIn(0, 100) }, num = true))
+        addField(cAnn, F("Głośność komunikatów (%)", "0 = bez zmiany, np. 70",
+            { Prefs.announceVolume.toString() }, { Prefs.announceVolume = (it.toIntOrNull() ?: 0).coerceIn(0, 100) }, num = true))
+        content.addView(cAnn)
+
         // kopia ustawień
         val cBackup = card("Kopia ustawień")
         cBackup.addView(label("Eksport zawiera ustawienia bez PIN-u, tokenów i adresu webhooka.", 13f))
@@ -498,6 +507,7 @@ class SettingsActivity : Activity() {
     private fun saveAll() {
         fieldViews.forEach { (f, e) -> f.set(e.text.toString()) }
         switchViews.forEach { (o, s) -> o.set(s.isChecked) }
+        try { Events.send("settings", "data" to ConfigApply.export()) } catch (_: Exception) {}  // 2.12.1: zmiany z menu trafiają też do HA
         restartService()
         Controller.loadDashboard()
         val needCam = Prefs.motionEnabled && !granted(Manifest.permission.CAMERA)
