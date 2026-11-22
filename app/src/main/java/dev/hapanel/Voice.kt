@@ -82,13 +82,13 @@ object Voice {
                 if (!listen) return@execute
                 var turn = 0
                 while (!cancel) {
-                    setState(State.LISTENING, "Słucham…")
+                    setState(State.LISTENING, L.t("Słucham…", "Listening…"))
                     val pcm = record(wait) ?: break           // nikt nie mówi -> koniec
                     if (cancel) break
-                    setState(State.THINKING, "Myślę…")
+                    setState(State.THINKING, L.t("Myślę…", "Thinking…"))
                     val res = send(pcm, session, who, source, turn)
                     if (res == null) {
-                        setState(State.SPEAKING, "Brak połączenia z domem")
+                        setState(State.SPEAKING, L.t("Brak połączenia z domem", "No connection to the house"))
                         SystemClock.sleep(1500)
                         break
                     }
@@ -203,7 +203,7 @@ object Voice {
         val base = Prefs.webhookUrl
         if (base.isBlank()) return null
         val url = base + (if (base.contains('?')) "&" else "?") +
-            "voice=1&session=${enc(session)}&person=${enc(person)}&source=${enc(source)}&turn=$turn"
+            "voice=1&session=${enc(session)}&person=${enc(person)}&source=${enc(source)}&turn=$turn&lang=${L.code}"
         return try {
             val c = URL(url).openConnection() as HttpURLConnection
             c.requestMethod = "POST"

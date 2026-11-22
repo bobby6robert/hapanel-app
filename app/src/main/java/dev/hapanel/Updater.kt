@@ -30,7 +30,7 @@ object Updater {
                 install(app, f)
             } catch (e: Exception) {
                 installingUntil = 0
-                toast("Aktualizacja: nie udało się pobrać (${e.javaClass.simpleName})")
+                toast(L.t("Aktualizacja: nie udało się pobrać (${e.javaClass.simpleName})", "Update: download failed (${e.javaClass.simpleName})"))
             }
         }.start()
         return true
@@ -78,13 +78,13 @@ class InstallResultReceiver : BroadcastReceiver() {
             Updater.installingUntil = 0
             val msg = when (status) {
                 PackageInstaller.STATUS_FAILURE_CONFLICT, PackageInstaller.STATUS_FAILURE_INCOMPATIBLE ->
-                    "inny podpis aplikacji – odinstaluj starą wersję raz ręcznie"
-                PackageInstaller.STATUS_FAILURE_BLOCKED -> "zablokowane przez system (Play Protect)"
+                    L.t("inny podpis aplikacji – odinstaluj starą wersję raz ręcznie", "different app signature – uninstall the old version once manually")
+                PackageInstaller.STATUS_FAILURE_BLOCKED -> L.t("zablokowane przez system (Play Protect)", "blocked by the system (Play Protect)")
                 PackageInstaller.STATUS_FAILURE_ABORTED -> "anulowano"
                 PackageInstaller.STATUS_FAILURE_STORAGE -> "brak miejsca"
-                else -> i.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "błąd $status"
+                else -> i.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: L.t("błąd $status", "error $status")
             }
-            Updater.toast("Aktualizacja nieudana: $msg")
+            Updater.toast(L.t("Aktualizacja nieudana: $msg", "Update failed: $msg"))
         }
     }
 }

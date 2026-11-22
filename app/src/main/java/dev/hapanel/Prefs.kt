@@ -50,6 +50,10 @@ object Prefs {
     var wakeQuietEnd: String get() = s("wakeQuietEnd", "06:30"); set(v) = p("wakeQuietEnd", v)
     var homeWord: Boolean get() = sp.getBoolean("homeWord", true); set(v) = p("homeWord", v)
     var homeWordText: String get() = s("homeWordText", "dom"); set(v) = p("homeWordText", v)
+    /** 2.13: język – system / pl / en */
+    var language: String get() = s("language", "system"); set(v) = p("language", v)
+    /** Słowo „dom” w bieżącym języku (po angielsku domyślnie „home”). */
+    val homeWord: String get() = homeWordText.ifBlank { "dom" }.let { if (L.en && it == "dom") "home" else it }
     var wakePresenceOnly: Boolean get() = sp.getBoolean("wakePresenceOnly", true); set(v) = p("wakePresenceOnly", v)
     var proximityTalk: Boolean get() = sp.getBoolean("proximityTalk", false); set(v) = p("proximityTalk", v)
     // 2.12: komunikaty bez nasłuchu, cisza gdy nikogo nie ma, czułość słowa, wejście do menu
