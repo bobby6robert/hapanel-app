@@ -1,3 +1,5 @@
+<img src="images/logo.png" width="96" align="right" alt="RB IT Academy">
+
 # HA Panel
 
 Lekka, darmowa aplikacja na Androida, która zamienia tablet w panel ścienny dla [Home Assistanta](https://www.home-assistant.io/). Alternatywa dla Fully Kiosk Browser bez licencji i bez zależności zewnętrznych. Powstała z myślą o starszych tabletach (testowana założeniowo na Lenovo Tab M10 FHD Plus, Android 10), działa na Androidzie 8 i nowszym.
@@ -7,7 +9,7 @@ Do pełnej obsługi z poziomu HA służy integracja: **[hapanel-integration](htt
 ## Funkcje
 
 - Pełnoekranowy WebView z dashboardem HA, ekran zawsze włączony, ponawianie po utracie połączenia (ekran „Brak połączenia”).
-- Autostart po restarcie i blokada wyjścia (przypięcie aplikacji). Ustawienia otwierasz 5 szybkimi dotknięciami w lewym górnym rogu.
+- Autostart po restarcie i blokada wyjścia (przypięcie aplikacji). Szybkie menu otwierasz 5 dotknięciami w dowolnym rogu ekranu albo przytrzymaniem dwóch palców przez 2 s.
 - Ekran ustawień z **listą kontrolną**: pokazuje, czego brakuje (mikrofon, autostart, bateria, polski głos TTS, HTTPS), i jednym przyciskiem otwiera właściwe okno systemu.
 - Automatyczne wykrywanie przez HA (mDNS) i zdalna konfiguracja z integracji, parowanie 6-cyfrowym kodem z ekranu tabletu.
 - **Tryb nocny w aplikacji:** harmonogram (np. 22:00-6:30), ciemny ekran z zegarem i datą, niska jasność, wybudzanie dotykiem lub ruchem i powrót do zegara po bezczynności. Działa bez HA.
@@ -26,6 +28,18 @@ Do pełnej obsługi z poziomu HA służy integracja: **[hapanel-integration](htt
 - Stabilna praca 24/7: blokady Wi-Fi i procesora, powrót do dashboardu po bezczynności, nocne przeładowanie, odporność na awarię WebView.
 
 „Uśpienie” ekranu to czarna nakładka z minimalną jasnością. Bez roota Android nie pozwala naprawdę wyłączyć ekranu.
+
+## Nowości w 2.12 – Aurora mniej gada, wygaszacz, szybkie menu
+Wymaga integracji **hapanel 1.9**.
+- **Aurora nie odzywa się sama:** po komunikacie z HA domyślnie nie słucha odpowiedzi (opcja), w godzinach ciszy nie działa też słowo „Dom”, a gdy nikogo nie ma w domu, Aurora milczy. Czułość słowa wybudzającego 1–3, machnięcie ręką domyślnie wyłączone.
+- **Nagraj Aurorę:** każdy domownik nagrywa słowo „Aurora” kilka razy. Tablet porównuje usłyszane słowo z nagraniami (MFCC + DTW, wszystko na tablecie), więc telewizor i obce głosy są odrzucane, a Aurora wie, kto mówi.
+- **Wygaszacz ekranu:** zegar z pogodą, zdjęcia rodziny (folder w `/media` HA), obraz z kamer (do 4) albo czarny ekran. Dotknięcie wraca do dashboardu, ruch go nie zamyka.
+- **Szybkie menu:** głośność, jasność, „Cisza na godzinę”, wygaszacz, odświeżenie strony i ustawienia (z PIN-em).
+- **Ustawienia w kategoriach:** Start, Ekran, Aurora, Komunikaty, Tablet.
+- **Ściszanie telewizora** na czas komunikatu i głośność komunikatów – ustawiane w menu tabletu, wykonywane przez HA.
+- **Strażnik:** gdy ekran się zawiesi albo strona straci połączenie z HA, panel sam się odświeża lub restartuje.
+- Zmiany zapisane w menu tabletu trafiają też do opcji integracji w HA.
+- Ikona aplikacji: logo RB IT Academy.
 
 ## Nowości w 2.8 – łatwiejsze aktualizacje
 - APK jest wersją końcową podpisaną stałym kluczem wydań (zamiast klucza testowego). Mniej ostrzeżeń Play Protect.
@@ -91,6 +105,10 @@ Jeśli ustawisz token API, dopisz do każdego adresu `token=...`.
 | Endpoint | Działanie |
 |---|---|
 | `/popup?url=...&seconds=30&wake=1&title=...` | okno podglądu na wierzchu (url pełny lub ścieżka w HA), `/closepopup` zamyka |
+| `/saver?photos=...&cams=...&weather=...` | dane wygaszacza (adresy zdjęć i kamer, jeden na linię; opis pogody) |
+| `/screensaver?on=1\|0` | pokazuje lub zamyka wygaszacz |
+| `/quiet?minutes=60` | cisza Aurory na podaną liczbę minut (`0` wyłącza) |
+| `/settings` | otwiera ustawienia na tablecie |
 | `/clock?out=...&in=...&info=...` | temperatury i informacja na zegarze nocnym |
 | `/screenshot?scale=0.5&quality=70` | zrzut ekranu (JPEG) |
 | `/export` | kopia ustawień w JSON (bez PIN-u i tokenów) |
