@@ -119,6 +119,7 @@ class SettingsActivity : Activity() {
         c.setPadding(dp(20), dp(18), dp(20), dp(18))
         c.background = rounded(CARD, 20, BORDER, 1)
         c.layoutParams = lp(MATCH_PARENT, WRAP_CONTENT, bottom = dp(16))
+        c.tag = title
         val h = TextView(this)
         h.text = title.uppercase(Locale("pl", "PL"))
         h.textSize = 12f
@@ -303,6 +304,7 @@ class SettingsActivity : Activity() {
         chips.addView(ipChip, lp(WRAP_CONTENT, WRAP_CONTENT, right = dp(10)))
         chips.addView(pairChip, lp(WRAP_CONTENT, WRAP_CONTENT))
         content.addView(chips, lp(MATCH_PARENT, WRAP_CONTENT, bottom = dp(18)))
+        val tabsAt = content.childCount
 
         // lista kontrolna
         val cCheck = card("Lista kontrolna")
@@ -469,6 +471,37 @@ class SettingsActivity : Activity() {
         content.addView(cPin)
 
         // przyciski
+        // 2.12.1: kategorie zamiast jednej długiej listy
+        val groups = linkedMapOf(
+            "Start" to listOf("Lista kontrolna", "Dashboard", "Home Assistant"),
+            "Ekran" to listOf("Ekran i czujniki", "Wygląd i dopasowanie", "Tryb nocny (zegar)", "Wygaszacz ekranu"),
+            "Aurora" to listOf("Aurora – rozmowa głosowa", "Nagraj Aurorę – głosy domowników"),
+            "Komunikaty" to listOf("Komunikaty i telewizor"),
+            "Tablet" to listOf("Tablet i sieć", "Kopia ustawień", "PIN do ustawień"))
+        val cards = (0 until content.childCount).map { content.getChildAt(it) }.filter { it.tag is String }
+        val tabRow = LinearLayout(this); tabRow.orientation = LinearLayout.HORIZONTAL
+        val tabBtns = mutableListOf<Pair<String, Button>>()
+        fun showGroup(g: String) {
+            val names = groups[g] ?: emptyList()
+            cards.forEach { c -> c.visibility = if (c.tag in names || groups.values.none { c.tag in it }) View.VISIBLE else View.GONE }
+            tabBtns.forEach { (n, b) ->
+                val on = n == g
+                b.background = if (on) rounded(MINT, 14) else rounded(withAlpha(MINT, 24), 14, MINT, 1)
+                b.setTextColor(if (on) Color.parseColor("#06201A") else MINT)
+            }
+            try { getSharedPreferences("ui", MODE_PRIVATE).edit().putString("tab", g).apply() } catch (_: Exception) {}
+        }
+        groups.keys.forEach { g ->
+            val b = pill(g, false, MINT) { showGroup(g) }
+            tabBtns += g to b
+            tabRow.addView(b, lp(WRAP_CONTENT, WRAP_CONTENT, right = dp(8)))
+        }
+        val tabScroll = HorizontalScrollView(this); tabScroll.isHorizontalScrollBarEnabled = false
+        tabScroll.addView(tabRow)
+        content.addView(tabScroll, tabsAt, lp(MATCH_PARENT, WRAP_CONTENT, bottom = dp(16)))
+        val last = try { getSharedPreferences("ui", MODE_PRIVATE).getString("tab", "Start") } catch (_: Exception) { "Start" }
+        showGroup(if (last in groups) last!! else "Start")
+
         val save = pill("Zapisz", true, MINT) { saveAll() }
         save.textSize = 17f
         save.setPadding(dp(18), dp(14), dp(18), dp(14))
