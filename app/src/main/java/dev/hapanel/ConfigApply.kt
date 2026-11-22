@@ -48,6 +48,16 @@ object ConfigApply {
         p["wakeSensitivity"]?.toIntOrNull()?.let { Prefs.wakeSensitivity = it.coerceIn(1, 3) }
         p["menuAnyCorner"]?.let { Prefs.menuAnyCorner = it == "1" }
         p["menuTwoFinger"]?.let { Prefs.menuTwoFinger = it == "1" }
+        p["duckEnabled"]?.let { Prefs.duckEnabled = it == "1" }
+        p["duckLevel"]?.toIntOrNull()?.let { Prefs.duckLevel = it.coerceIn(0, 100) }
+        p["announceVolume"]?.toIntOrNull()?.let { Prefs.announceVolume = it.coerceIn(0, 100) }
+        p["duckName"]?.let { Prefs.duckName = it }
+        p["saverEnabled"]?.let { Prefs.saverEnabled = it == "1" }
+        p["saverType"]?.let { if (it in listOf("clock", "photos", "cameras", "black")) Prefs.saverType = it }
+        p["saverAfter"]?.toIntOrNull()?.let { Prefs.saverAfterSec = it.coerceIn(15, 3600) }
+        p["saverPhotoSec"]?.toIntOrNull()?.let { Prefs.saverPhotoSec = it.coerceIn(3, 600) }
+        p["saverCamSec"]?.toIntOrNull()?.let { Prefs.saverCamSec = it.coerceIn(2, 60) }
+        p["saverShuffle"]?.let { Prefs.saverShuffle = it == "1" }
         var look = false
         p["css"]?.let { Prefs.injectCss = it; look = true }
         p["js"]?.let { Prefs.injectJs = it; look = true }
@@ -101,4 +111,13 @@ object ConfigApply {
         .put("wakeSensitivity", Prefs.wakeSensitivity.toString())
         .put("menuAnyCorner", b(Prefs.menuAnyCorner))
         .put("menuTwoFinger", b(Prefs.menuTwoFinger))
+        .put("duckEnabled", b(Prefs.duckEnabled))
+        .put("duckLevel", Prefs.duckLevel.toString())
+        .put("announceVolume", Prefs.announceVolume.toString())
+        .put("saverEnabled", b(Prefs.saverEnabled))
+        .put("saverType", Prefs.saverType)
+        .put("saverAfter", Prefs.saverAfterSec.toString())
+        .put("saverPhotoSec", Prefs.saverPhotoSec.toString())
+        .put("saverCamSec", Prefs.saverCamSec.toString())
+        .put("saverShuffle", b(Prefs.saverShuffle))
 }

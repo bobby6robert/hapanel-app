@@ -43,6 +43,7 @@ class MainActivity : Activity() {
     private lateinit var popupTitle: TextView
     private lateinit var aurora: AuroraView
     private lateinit var talkBtn: TextView
+    private lateinit var saverView: ScreenSaver
     private var taps = 0
     private var firstTap = 0L
     private var retryPending = false
@@ -232,6 +233,10 @@ class MainActivity : Activity() {
         tl2.setMargins(0, 0, dp(18), dp(18))
         root.addView(talkBtn, tl2)
 
+        // --- 2.12.1 wygaszacz ekranu ---
+        saverView = ScreenSaver(this)
+        root.addView(saverView, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+
         // --- czarna nakładka (uśpienie) ---
         overlay = View(this)
         overlay.setBackgroundColor(Color.BLACK)
@@ -402,7 +407,14 @@ class MainActivity : Activity() {
     }
 
     /** Temperatury i informacja na zegarze nocnym (z HA). */
+    fun saverDataChanged() {
+        if (!::saverView.isInitialized) return
+        saverView.updateInfo()
+        if (saverView.visibility == View.VISIBLE) saverView.start()
+    }
+
     fun updateClockInfo() {
+        if (::saverView.isInitialized) saverView.updateInfo()
         val parts = mutableListOf<String>()
         if (Controller.clockOut.isNotBlank()) parts += "na zewnątrz ${Controller.clockOut}°"
         if (Controller.clockIn.isNotBlank()) parts += "w domu ${Controller.clockIn}°"
@@ -462,6 +474,7 @@ class MainActivity : Activity() {
         val lp = window.attributes
         lp.screenBrightness = when {
             Controller.sleeping -> 0.01f
+            Controller.screensaver && !Controller.clock && Prefs.saverType == "black" -> 0.01f
             Controller.night && Prefs.nightEnabled -> (Prefs.nightBrightness / 255f).coerceIn(0.01f, 1f)
             else -> Controller.brightness
         }
@@ -471,13 +484,16 @@ class MainActivity : Activity() {
         if (Controller.deep) window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         // strona HA nie rysuje animacji pod nakładką / zegarem
-        val hidden = Controller.sleeping || Controller.clock
+        val saverOn = Controller.screensaver && !Controller.clock
+        val hidden = Controller.sleeping || Controller.clock || saverOn
         if (hidden != webPaused) {
             webPaused = hidden
             try { if (hidden) { web.onPause(); web.pauseTimers() } else { web.resumeTimers(); web.onResume() } } catch (_: Exception) {}
         }
         overlay.visibility = if (Controller.sleeping) View.VISIBLE else View.GONE
         clockLayer.visibility = if (Controller.clock) View.VISIBLE else View.GONE
+        if (saverOn && !Controller.sleeping) { if (saverView.visibility != View.VISIBLE) saverView.start() }
+        else if (saverView.visibility == View.VISIBLE) saverView.stop()
         updateVoice()
     }
 
@@ -487,7 +503,7 @@ class MainActivity : Activity() {
         val talking = Voice.state != Voice.State.IDLE
         if (talking && aurora.visibility != View.VISIBLE) { aurora.visibility = View.VISIBLE; aurora.invalidate() }
         else if (!talking && aurora.visibility == View.VISIBLE) aurora.visibility = View.GONE
-        talkBtn.visibility = if (Prefs.talkButton && Prefs.voiceEnabled && !talking && !Controller.sleeping && !Controller.clock)
+        talkBtn.visibility = if (Prefs.talkButton && Prefs.voiceEnabled && !talking && !Controller.sleeping && !Controller.clock && !Controller.screensaver)
             View.VISIBLE else View.GONE
     }
 
@@ -511,7 +527,7 @@ class MainActivity : Activity() {
 
     /** Ustawienia (z PIN-em, jeśli ustawiony): 5 szybkich dotknięć w rogu ekranu (2.12: w dowolnym rogu,
      *  większe pole) albo przytrzymanie dwoma palcami przez 2 sekundy w dowolnym miejscu. */
-    private val twoFingerHold = Runnable { requestSettings() }
+    private val twoFingerHold = Runnable { showQuickMenu() }
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         Controller.touch()
         if (ev.action == MotionEvent.ACTION_DOWN) Events.touch()
@@ -524,7 +540,7 @@ class MainActivity : Activity() {
             if (inCorner) {
                 val now = SystemClock.elapsedRealtime()
                 if (now - firstTap > 4000) { taps = 0; firstTap = now }
-                if (++taps >= 5) { taps = 0; requestSettings() }
+                if (++taps >= 5) { taps = 0; showQuickMenu() }
             }
         }
         when (ev.actionMasked) {
@@ -535,6 +551,74 @@ class MainActivity : Activity() {
             MotionEvent.ACTION_MOVE -> if (ev.pointerCount != 2) Controller.ui.removeCallbacks(twoFingerHold)
         }
         return super.dispatchTouchEvent(ev)
+    }
+
+    /** 2.12.1 strażnik: czy strona HA żyje i ma połączenie (wynik w wątku ekranu). */
+    fun pageHealth(done: (Boolean) -> Unit) {
+        var answered = false
+        val timeout = Runnable { if (!answered) { answered = true; done(false) } }
+        Controller.ui.postDelayed(timeout, 10_000)
+        try {
+            web.evaluateJavascript("(function(){var h=document.querySelector('home-assistant');" +
+                "if(!h) return location.href.indexOf('http')===0 ? 'other' : 'no';" +
+                "return (h.hass && h.hass.connected===false) ? 'no' : 'ok';})()") { r ->
+                if (answered) return@evaluateJavascript
+                answered = true; Controller.ui.removeCallbacks(timeout)
+                done(r?.contains("no") != true)
+            }
+        } catch (_: Exception) { answered = true; Controller.ui.removeCallbacks(timeout); done(false) }
+    }
+
+    // ---------- 2.12.1 szybkie menu ----------
+    private var quickDlg: AlertDialog? = null
+    fun showQuickMenu() {
+        if (quickDlg?.isShowing == true) return
+        Controller.wake()
+        val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+        val box = LinearLayout(this); box.orientation = LinearLayout.VERTICAL; box.setPadding(dp(22), dp(8), dp(22), dp(4))
+        fun title(t: String) = TextView(this).apply { text = t; textSize = 15f; setPadding(0, dp(12), 0, dp(2)) }
+        // głośność
+        box.addView(title("🔊 Głośność"))
+        val maxV = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+        box.addView(SeekBar(this).apply {
+            max = maxV; progress = am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(s: SeekBar?, v: Int, user: Boolean) { if (user) am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, v, android.media.AudioManager.FLAG_PLAY_SOUND) }
+                override fun onStartTrackingTouch(s: SeekBar?) {}
+                override fun onStopTrackingTouch(s: SeekBar?) {}
+            })
+        })
+        // jasność
+        box.addView(title("☀ Jasność"))
+        val autoSw = Switch(this).apply { text = "Automatyczna jasność"; isChecked = Prefs.autoBrightness }
+        val br = SeekBar(this).apply {
+            max = 100; progress = ((if (Controller.brightness > 0) Controller.brightness else 0.6f) * 100).toInt()
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(s: SeekBar?, v: Int, user: Boolean) {
+                    if (!user) return
+                    if (Prefs.autoBrightness) { Prefs.autoBrightness = false; autoSw.isChecked = false }
+                    Controller.setBrightness(maxOf(2, v) / 100f)
+                }
+                override fun onStartTrackingTouch(s: SeekBar?) {}
+                override fun onStopTrackingTouch(s: SeekBar?) {}
+            })
+        }
+        autoSw.setOnCheckedChangeListener { _, on -> Prefs.autoBrightness = on; if (!on) Controller.setBrightness(maxOf(2, br.progress) / 100f) }
+        box.addView(br); box.addView(autoSw)
+        // przyciski
+        val quietTxt = if (Controller.quiet) "🔔 Wyłącz ciszę" else "🔕 Cisza na godzinę"
+        fun btn(t: String, a: () -> Unit) = Button(this).apply { text = t; isAllCaps = false
+            setOnClickListener { quickDlg?.dismiss(); a() } }
+        box.addView(btn(quietTxt) {
+            Controller.quietUntil = if (Controller.quiet) 0L else System.currentTimeMillis() + 3_600_000L
+            Toast.makeText(this, if (Controller.quiet) "Aurora milczy do " + java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(Controller.quietUntil)) else "Cisza wyłączona", Toast.LENGTH_SHORT).show()
+            Events.send("quiet", "until" to Controller.quietUntil / 1000)
+        }, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = dp(14) })
+        box.addView(btn("🖼 Wygaszacz teraz") { Controller.ui.postDelayed({ Controller.showSaver() }, 300) })
+        box.addView(btn("↻ Odśwież stronę") { Controller.reload() })
+        box.addView(btn("⚙ Ustawienia") { requestSettings() })
+        val sc = ScrollView(this); sc.addView(box)
+        quickDlg = AlertDialog.Builder(this).setTitle("Szybkie menu").setView(sc).setNegativeButton("Zamknij", null).show()
     }
 
     /** 2.12: otwarcie ustawień przyciskiem z HA (polecenie już autoryzowane tokenem integracji). */

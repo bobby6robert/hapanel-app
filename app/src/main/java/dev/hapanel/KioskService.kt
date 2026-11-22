@@ -182,6 +182,10 @@ class KioskService : Service() {
         // w trybie oszczędnym ekran usypia po 2 min nawet, gdy „usypiaj po” = 0
         val s = Prefs.sleepAfterSec.let { if (it <= 0 && saver && !nightNow) 120 else it }
         if (s > 0 && !Controller.sleeping && idle > s * 1000L) Controller.sleep()
+        // 2.12.1 wygaszacz: po bezczynności, poza nocnym zegarem; ruch go nie zamyka (zamyka dotyk)
+        if (Prefs.saverEnabled && !Controller.screensaver && !Controller.sleeping && !Controller.clock &&
+            Voice.state == Voice.State.IDLE && idle > Prefs.saverAfterSec.coerceAtLeast(15) * 1000L) Controller.showSaver()
+        if (!Prefs.saverEnabled && Controller.screensaver) Controller.hideSaver()
         // kamera ruchu: stoi przy aktywnym używaniu ekranu i w głębokim uśpieniu; w zwykłym uśpieniu działa zrywami
         motion?.let {
             when {
@@ -192,6 +196,7 @@ class KioskService : Service() {
             }
         }
         trackDrain(now)
+        watchdog(now)
         val h = Prefs.homeAfterSec
         if (h > 0 && idle > h * 1000L && Controller.lastActivity > lastHomed && Prefs.dashboardUrl.isNotBlank()) {
             lastHomed = now
@@ -251,8 +256,45 @@ class KioskService : Service() {
     private fun inNightWindow(): Boolean = inWindow(Prefs.nightStart, Prefs.nightEnd)
 
     /** 2.12: Aurora może słuchać słowa / machnięcia tylko poza ciszą nocną i gdy ktoś jest w domu. */
+    // ---------- 2.12.1 strażnik: zawieszony ekran albo strona bez połączenia z HA → restart ----------
+    private var lastBeatPost = 0L
+    private var badPage = 0
+    private var lastPageCheck = 0L
+    private fun watchdog(now: Long) {
+        if (Updater.installing) return
+        if (now - lastBeatPost > 15_000) { lastBeatPost = now; Controller.ui.post { Controller.uiBeat = SystemClock.elapsedRealtime() } }
+        // wątek ekranu nie odpowiada od 90 s → restart całej aplikacji
+        if (Controller.activity != null && now - Controller.uiBeat > 90_000) {
+            Events.send("watchdog", "reason" to "ui_frozen")
+            restartApp(); return
+        }
+        // strona HA: co 2 min sprawdzamy połączenie; 3 razy z rzędu źle → przeładowanie, 6 razy → restart aplikacji
+        if (now - lastPageCheck < 120_000 || Controller.sleeping || Controller.deep) return
+        lastPageCheck = now
+        Controller.ui.post {
+            val a = Controller.activity ?: return@post
+            a.pageHealth { ok ->
+                if (ok) { badPage = 0; return@pageHealth }
+                badPage++
+                if (badPage == 3) { Events.send("watchdog", "reason" to "page_reload"); Controller.reload() }
+                if (badPage >= 6) { badPage = 0; Events.send("watchdog", "reason" to "page_restart"); restartApp() }
+            }
+        }
+    }
+
+    private fun restartApp() {
+        try {
+            val i = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            val pi = android.app.PendingIntent.getActivity(this, 7, i,
+                android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_CANCEL_CURRENT)
+            (getSystemService(ALARM_SERVICE) as android.app.AlarmManager)
+                .set(android.app.AlarmManager.RTC, System.currentTimeMillis() + 3000, pi)
+        } catch (_: Exception) {}
+        Controller.ui.postDelayed({ android.os.Process.killProcess(android.os.Process.myPid()) }, 800)
+    }
+
     private fun voiceAllowedNow(): Boolean =
-        !inWindow(Prefs.wakeQuietStart, Prefs.wakeQuietEnd) && !(Prefs.awayMute && Controller.homeEmpty)
+        !inWindow(Prefs.wakeQuietStart, Prefs.wakeQuietEnd) && !(Prefs.awayMute && Controller.homeEmpty) && !Controller.quiet
 
     private fun inWindow(start: String, end: String): Boolean {
         val s = parseMin(start, 22 * 60)
@@ -279,10 +321,13 @@ class KioskService : Service() {
             "/auto" -> Prefs.autoBrightness = p["on"] != "0"
             "/sleep" -> Controller.sleep()
             "/wake" -> Controller.wake()
-            "/tts" -> { if (p["wake"] == "1") Controller.wake()
+            "/tts" -> { if (Controller.quiet) return 200 to """{"ok":true,"muted":true}"""
+                if (p["wake"] == "1") Controller.wake()
                 p["volume"]?.toIntOrNull()?.let { setVolume(it) }
                 Speech.say(p["text"] ?: "") }
             "/converse" -> {   // komunikat Aurory (dźwięk z HA albo tekst), potem nasłuch odpowiedzi
+                if (Controller.quiet) { Events.send("voice_end", "source" to "announce", "muted" to true)
+                    return 200 to """{"ok":true,"muted":true}""" }
                 p["volume"]?.toIntOrNull()?.let { setVolume(it) }
                 val listen = p["listen"]?.let { it != "0" } ?: Prefs.announceListen   // 2.12: domyślnie bez nasłuchu
                 val wait = p["wait"]?.toIntOrNull() ?: Prefs.listenWaitSec
@@ -300,6 +345,8 @@ class KioskService : Service() {
             "/listen" -> Voice.start(this, person = p["person"] ?: "", waitSec = p["wait"]?.toIntOrNull() ?: Prefs.listenWaitSec, source = "ha")
             "/stoptalk" -> Voice.stop()
             "/settings" -> Controller.ui.post { Controller.activity?.openSettingsFromHa() }
+            "/quiet" -> { val m = p["minutes"]?.toIntOrNull() ?: 60
+                Controller.quietUntil = if (m <= 0) 0L else System.currentTimeMillis() + m * 60_000L; push() }
             "/playsound" -> { val u = p["url"] ?: return 400 to """{"error":"url"}"""
                 playSound(u, p["volume"]?.toIntOrNull()) }
             "/stopsound" -> Controller.ui.post { stopSoundNow(); push() }
@@ -324,6 +371,8 @@ class KioskService : Service() {
                 Controller.popup(u, p["seconds"]?.toIntOrNull() ?: 30, p["title"] ?: "") }
             "/closepopup", "/popup_close" -> Controller.closePopup()
             "/clock" -> Controller.setClockData(p["out"], p["in"], p["info"])
+            "/saver" -> Controller.setSaverData(p["photos"], p["cams"], p["weather"])
+            "/screensaver" -> if (p["on"] == "0") Controller.wake() else Controller.showSaver()
             "/status" -> return 200 to statusJson()
             else -> return 404 to """{"error":"not found"}"""
         }
@@ -395,6 +444,8 @@ class KioskService : Service() {
             .put("pin", Pin.isSet())
             .put("night", Controller.night)
             .put("clock", Controller.clock)
+            .put("quiet_until", if (Controller.quiet) Controller.quietUntil / 1000 else 0)
+            .put("screensaver", Controller.screensaver)
             .put("battery_temp", batteryTemp)
             .put("battery_health", batteryHealth)
             .put("mem_free", memFreeMb())
@@ -455,7 +506,7 @@ class KioskService : Service() {
         motion = null
         if (Prefs.motionEnabled && checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
             motion = MotionDetector(this, Prefs.motionThreshold,
-                onTrigger = { Controller.touch(); if (Prefs.wakeOnMotion) Controller.wake() },
+                onTrigger = { Controller.touch(); if (Prefs.wakeOnMotion) Controller.wake(keepSaver = true) },
                 onState = { motionActive = it; push(); Events.send("motion", "state" to it) }).also {
                 try { it.start() } catch (_: Exception) {}
             }
