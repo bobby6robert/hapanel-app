@@ -53,6 +53,7 @@ object ConfigApply {
         p["announceVolume"]?.toIntOrNull()?.let { Prefs.announceVolume = it.coerceIn(0, 100) }
         p["duckName"]?.let { Prefs.duckName = it }
         p["language"]?.let { if (it in listOf("system", "pl", "en")) Prefs.language = it }
+        p["autoClean"]?.let { Prefs.autoClean = it == "1" }
         p["saverEnabled"]?.let { Prefs.saverEnabled = it == "1" }
         p["saverType"]?.let { if (it in listOf("clock", "photos", "cameras", "black")) Prefs.saverType = it }
         p["saverAfter"]?.toIntOrNull()?.let { Prefs.saverAfterSec = it.coerceIn(15, 3600) }
@@ -116,6 +117,7 @@ object ConfigApply {
         .put("duckLevel", Prefs.duckLevel.toString())
         .put("announceVolume", Prefs.announceVolume.toString())
         .put("language", Prefs.language)
+        .put("autoClean", b(Prefs.autoClean))
         .put("saverEnabled", b(Prefs.saverEnabled))
         .put("saverType", Prefs.saverType)
         .put("saverAfter", Prefs.saverAfterSec.toString())

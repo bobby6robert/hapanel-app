@@ -197,6 +197,7 @@ class KioskService : Service() {
         }
         trackDrain(now)
         watchdog(now)
+        autoClean(now, idle)
         val h = Prefs.homeAfterSec
         if (h > 0 && idle > h * 1000L && Controller.lastActivity > lastHomed && Prefs.dashboardUrl.isNotBlank()) {
             lastHomed = now
@@ -279,6 +280,26 @@ class KioskService : Service() {
                 if (badPage == 3) { Events.send("watchdog", "reason" to "page_reload"); Controller.reload() }
                 if (badPage >= 6) { badPage = 0; Events.send("watchdog", "reason" to "page_restart"); restartApp() }
             }
+        }
+    }
+
+    // 2.14: co 3 h przy bezczynności usypia aplikacje w tle; w niedzielę ok. 3:30 restart panelu
+    private var lastClean = 0L
+    private var lastWeekly = -1
+    private fun autoClean(now: Long, idle: Long) {
+        if (!Prefs.autoClean) return
+        if (idle > 5 * 60_000 && now - lastClean > 3 * 3_600_000L && Voice.state == Voice.State.IDLE) {
+            lastClean = now
+            exec.execute { try { val (b, a) = AppCleaner.cleanMemory(this); Events.send("cleaned", "before" to b, "after" to a, "auto" to true) } catch (_: Exception) {} }
+        }
+        val c = Calendar.getInstance()
+        val day = c.get(Calendar.DAY_OF_YEAR)
+        if (c.get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY && c.get(Calendar.HOUR_OF_DAY) == 3 && c.get(Calendar.MINUTE) >= 30 &&
+            day != lastWeekly && getSharedPreferences("hapanel_state", MODE_PRIVATE).getInt("weekly", -1) != day) {
+            lastWeekly = day
+            getSharedPreferences("hapanel_state", MODE_PRIVATE).edit().putInt("weekly", day).commit()   // po restarcie nie powtarzać
+            Events.send("watchdog", "reason" to "weekly_restart")
+            restartApp()
         }
     }
 
@@ -374,6 +395,15 @@ class KioskService : Service() {
             "/saver" -> Controller.setSaverData(p["photos"], p["cams"], p["weather"])
             "/screensaver" -> if (p["on"] == "0") Controller.wake() else Controller.showSaver()
             "/status" -> return 200 to statusJson()
+            "/apps" -> return 200 to AppCleaner.list(this).toString()
+            "/cleanmem" -> { val (b, a) = AppCleaner.cleanMemory(this)
+                Events.send("cleaned", "before" to b, "after" to a)
+                return 200 to """{"ok":true,"before":$b,"after":$a}""" }
+            "/clearcache" -> Controller.ui.post { try { Controller.activity?.web?.clearCache(true) } catch (_: Exception) {}; Controller.reload() }
+            "/uninstall" -> { val pk = p["package"] ?: return 400 to """{"error":"package"}"""
+                if (!AppCleaner.uninstall(this, pk)) return 403 to """{"error":"protected"}""" }
+            "/appsettings" -> { val pk = p["package"] ?: return 400 to """{"error":"package"}"""
+                if (!AppCleaner.openSettings(this, pk)) return 403 to """{"error":"protected"}""" }
             else -> return 404 to """{"error":"not found"}"""
         }
         return 200 to """{"ok":true}"""

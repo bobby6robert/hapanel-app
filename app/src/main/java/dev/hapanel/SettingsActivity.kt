@@ -385,6 +385,7 @@ class SettingsActivity : Activity() {
 
         // tryb nocny
         val cNight = card(L.t("Tryb nocny (zegar)", "Night mode (clock)"))
+        addSwitch(cScr, O(L.t("Automatyczne sprzątanie pamięci (co 3 h usypia aplikacje w tle, w niedzielę o 3:30 restart panelu)", "Automatic memory cleanup (every 3 h puts background apps to sleep, Sunday 3:30 panel restart)"), { Prefs.autoClean }, { Prefs.autoClean = it }))
         addSwitch(cScr, O(L.t("Oszczędzanie baterii (na baterii i w nocy ekran naprawdę gaśnie, tablet zasypia)", "Battery saving (on battery and at night the screen really turns off, the tablet sleeps)"),
             { Prefs.saverMode != "never" }, { Prefs.saverMode = if (it) "auto" else "never" }))
         addSwitch(cNight, O(L.t("Włącz tryb nocny w aplikacji", "Enable night mode in the app"), { Prefs.nightEnabled }, { Prefs.nightEnabled = it }))
