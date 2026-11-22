@@ -2,6 +2,8 @@
 
 # HA Panel
 
+🇵🇱 Polski · 🇬🇧 [English](README.en.md)
+
 Lekka, darmowa aplikacja na Androida, która zamienia tablet w panel ścienny dla [Home Assistanta](https://www.home-assistant.io/). Alternatywa dla Fully Kiosk Browser bez licencji i bez zależności zewnętrznych. Powstała z myślą o starszych tabletach (testowana założeniowo na Lenovo Tab M10 FHD Plus, Android 10), działa na Androidzie 8 i nowszym.
 
 Do pełnej obsługi z poziomu HA służy integracja: **[hapanel-integration](https://github.com/bobby6robert/hapanel-integration)**.
@@ -28,6 +30,9 @@ Do pełnej obsługi z poziomu HA służy integracja: **[hapanel-integration](htt
 - Stabilna praca 24/7: blokady Wi-Fi i procesora, powrót do dashboardu po bezczynności, nocne przeładowanie, odporność na awarię WebView.
 
 „Uśpienie” ekranu to czarna nakładka z minimalną jasnością. Bez roota Android nie pozwala naprawdę wyłączyć ekranu.
+
+## Nowości w 2.13 – język angielski
+- Wybór języka na górze ustawień: **Systemowy / Polski / English**. Po angielsku są napisy, komunikaty na ekranie, głos Androida i słowo wybudzające (angielski model mowy pobiera się sam). Rozmowę z Aurorą w HA integracja **1.10** prowadzi w języku tabletu.
 
 ## Nowości w 2.12 – Aurora mniej gada, wygaszacz, szybkie menu
 Wymaga integracji **hapanel 1.9**.
