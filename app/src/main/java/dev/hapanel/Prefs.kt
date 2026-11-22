@@ -51,7 +51,14 @@ object Prefs {
     var homeWord: Boolean get() = sp.getBoolean("homeWord", true); set(v) = p("homeWord", v)
     var homeWordText: String get() = s("homeWordText", "dom"); set(v) = p("homeWordText", v)
     var wakePresenceOnly: Boolean get() = sp.getBoolean("wakePresenceOnly", true); set(v) = p("wakePresenceOnly", v)
-    var proximityTalk: Boolean get() = sp.getBoolean("proximityTalk", true); set(v) = p("proximityTalk", v)
+    var proximityTalk: Boolean get() = sp.getBoolean("proximityTalk", false); set(v) = p("proximityTalk", v)
+    // 2.12: komunikaty bez nasłuchu, cisza gdy nikogo nie ma, czułość słowa, wejście do menu
+    var announceListen: Boolean get() = sp.getBoolean("announceListen", false); set(v) = p("announceListen", v)
+    var awayMute: Boolean get() = sp.getBoolean("awayMute", true); set(v) = p("awayMute", v)
+    /** 1 = mniej czuła (mniej pomyłek), 2 = średnia, 3 = bardzo czuła. */
+    var wakeSensitivity: Int get() = sp.getInt("wakeSensitivity", 2); set(v) = p("wakeSensitivity", v)
+    var menuAnyCorner: Boolean get() = sp.getBoolean("menuAnyCorner", true); set(v) = p("menuAnyCorner", v)
+    var menuTwoFinger: Boolean get() = sp.getBoolean("menuTwoFinger", true); set(v) = p("menuTwoFinger", v)
     var listenWaitSec: Int get() = sp.getInt("listenWaitSec", 8); set(v) = p("listenWaitSec", v)
     var listenMaxSec: Int get() = sp.getInt("listenMaxSec", 30); set(v) = p("listenMaxSec", v)
     var silenceMs: Int get() = sp.getInt("silenceMs", 1200); set(v) = p("silenceMs", v)

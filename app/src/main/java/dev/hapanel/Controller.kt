@@ -12,6 +12,7 @@ object Controller {
     @Volatile var clock = false              // nakładka z zegarem (tryb nocny)
     @Volatile var night = false              // czy trwa okno nocne
     @Volatile var saver = false              // tryb oszczędny aktywny (bateria / noc)
+    @Volatile var homeEmpty = false          // 2.12: nikogo nie ma w domu (z HA) – Aurora milczy
     /** Głębokie uśpienie: ekran może naprawdę zgasnąć, strona i nasłuch stoją. */
     val deep: Boolean get() = saver && (sleeping || clock)
     @Volatile var brightness = -1f           // -1 = jasność systemowa

@@ -18,10 +18,11 @@ import java.util.zip.ZipInputStream
  * pobierany raz przy pierwszym włączeniu). Dźwięk nie opuszcza tabletu, dopóki słowo nie padnie.
  */
 object WakeWord {
-    /** Minimalna pewność rozpoznania słowa (0–1). Mniej = czulej, więcej fałszywych wybudzeń. */
-    private const val MIN_CONF = 0.8
+    /** Minimalna pewność rozpoznania słowa (0–1) wg czułości z ustawień (1 mało czuła … 3 bardzo czuła).
+     *  Mniej = czulej, ale więcej fałszywych wybudzeń (np. od telewizora). */
+    private val MIN_CONF get() = when (Prefs.wakeSensitivity) { 1 -> 0.95; 3 -> 0.8; else -> 0.9 }
     /** Słowo „dom” jest krótkie i częste w mowie – wyższy próg pewności. */
-    private const val MIN_CONF_HOME = 0.9
+    private val MIN_CONF_HOME get() = when (Prefs.wakeSensitivity) { 1 -> 0.99; 3 -> 0.9; else -> 0.96 }
 
     private const val MODEL_URL = "https://alphacephei.com/vosk/models/vosk-model-small-pl-0.22.zip"
     private const val MODEL_DIR = "vosk-pl"
@@ -91,23 +92,36 @@ object WakeWord {
         val aurora = Prefs.wakeWordText.ifBlank { "aurora" }
         val home = Prefs.homeWordText.ifBlank { "dom" }
         // które słowo padło (tylko spośród aktualnie nasłuchiwanych); „dom” jest krótki – wymaga większej pewności
+        var heard = ""
+        var conf = 0.0
         val word = try {
             val o = JSONObject(json)
+            heard = o.optString(key)
             val res = o.optJSONArray("result")
             if (res != null && res.length() > 0) {
-                (0 until res.length()).map { res.getJSONObject(it) }.firstOrNull { w ->
+                val ws = (0 until res.length()).map { res.getJSONObject(it) }
+                val hit = ws.firstOrNull { it.optString("word") in active }
+                conf = hit?.optDouble("conf", 0.0) ?: 0.0
+                // 2.12: „dom” tylko jako osobne, krótkie zawołanie (nie w środku zdania z telewizora)
+                ws.firstOrNull { w ->
                     val wd = w.optString("word")
-                    wd in active && w.optDouble("conf", 0.0) >= (if (wd == home) MIN_CONF_HOME else MIN_CONF)
+                    wd in active && w.optDouble("conf", 0.0) >= (if (wd == home) MIN_CONF_HOME else MIN_CONF) &&
+                        (wd != home || ws.size <= 3)
                 }?.optString("word")
-            } else active.firstOrNull { o.optString(key).split(" ").contains(it) }
-        } catch (_: Exception) { null } ?: return
+            } else null      // bez pewności słowa nie wybudzamy (wcześniej wystarczył sam tekst)
+        } catch (_: Exception) { null }
+        if (word == null) {
+            // odrzucone „prawie wybudzenie” – do dziennika w HA (żeby było widać, co słyszy tablet)
+            if (conf > 0.5) Events.send("wake_reject", "heard" to heard.take(80), "conf" to conf)
+            return
+        }
         val now = System.currentTimeMillis()
         if (now - lastHit < 3000) return
         lastHit = now
         val ctx = Controller.activity ?: return
         Controller.ui.post {
             release()
-            Events.send("wake_word", "word" to word)
+            Events.send("wake_word", "word" to word, "conf" to conf, "heard" to heard.take(80))
             if (word == home && word != aurora) Voice.start(ctx, source = "command", waitSec = 5)
             else Voice.start(ctx, source = "wake")
         }

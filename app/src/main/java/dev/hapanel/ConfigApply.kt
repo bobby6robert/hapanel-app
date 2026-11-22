@@ -42,6 +42,12 @@ object ConfigApply {
         p["listenWait"]?.toIntOrNull()?.let { Prefs.listenWaitSec = it.coerceIn(3, 30) }
         p["listenMax"]?.toIntOrNull()?.let { Prefs.listenMaxSec = it.coerceIn(5, 60) }
         p["silenceMs"]?.toIntOrNull()?.let { Prefs.silenceMs = it.coerceIn(500, 4000) }
+        p["announceListen"]?.let { Prefs.announceListen = it == "1" }
+        p["awayMute"]?.let { Prefs.awayMute = it == "1" }
+        p["homeEmpty"]?.let { Controller.homeEmpty = it == "1" }
+        p["wakeSensitivity"]?.toIntOrNull()?.let { Prefs.wakeSensitivity = it.coerceIn(1, 3) }
+        p["menuAnyCorner"]?.let { Prefs.menuAnyCorner = it == "1" }
+        p["menuTwoFinger"]?.let { Prefs.menuTwoFinger = it == "1" }
         var look = false
         p["css"]?.let { Prefs.injectCss = it; look = true }
         p["js"]?.let { Prefs.injectJs = it; look = true }
@@ -90,4 +96,9 @@ object ConfigApply {
         .put("listenWait", Prefs.listenWaitSec.toString())
         .put("listenMax", Prefs.listenMaxSec.toString())
         .put("silenceMs", Prefs.silenceMs.toString())
+        .put("announceListen", b(Prefs.announceListen))
+        .put("awayMute", b(Prefs.awayMute))
+        .put("wakeSensitivity", Prefs.wakeSensitivity.toString())
+        .put("menuAnyCorner", b(Prefs.menuAnyCorner))
+        .put("menuTwoFinger", b(Prefs.menuTwoFinger))
 }

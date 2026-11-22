@@ -84,7 +84,7 @@ class KioskService : Service() {
                 if (Prefs.wakeOnProximity) Controller.wake()
                 // dwa machnięcia ręką w ciągu 2 s = rozmowa z Aurorą
                 val now = SystemClock.elapsedRealtime()
-                if (Prefs.proximityTalk && Prefs.voiceEnabled && now - lastNear < 2000 && !Voice.busy()) {
+                if (Prefs.proximityTalk && Prefs.voiceEnabled && voiceAllowedNow() && now - lastNear < 2000 && !Voice.busy()) {
                     lastNear = 0L
                     Voice.start(this@KioskService, source = "proximity")
                 } else lastNear = now
@@ -210,9 +210,10 @@ class KioskService : Service() {
         if (motionActive) lastMotion = now
         val present = now - lastMotion < 60_000L
         val allowWake = Prefs.voiceEnabled && Prefs.wakeWord && !Controller.deep &&
-            !inWindow(Prefs.wakeQuietStart, Prefs.wakeQuietEnd) && (!Prefs.wakePresenceOnly || present)
+            voiceAllowedNow() && (!Prefs.wakePresenceOnly || present)
         // słowo „Dom”: krótkie polecenia dla domu, słychać je z całego pomieszczenia (bez kamery)
-        val allowHome = Prefs.voiceEnabled && Prefs.homeWord && !Controller.deep
+        // 2.12: też milczy w godzinach ciszy i gdy nikogo nie ma w domu (wcześniej słuchało całą dobę)
+        val allowHome = Prefs.voiceEnabled && Prefs.homeWord && !Controller.deep && voiceAllowedNow()
         try { WakeWord.tick(this, allowWake, allowHome) } catch (_: Throwable) {}
         val c = Calendar.getInstance()
         val day = c.get(Calendar.DAY_OF_YEAR)
@@ -249,6 +250,10 @@ class KioskService : Service() {
 
     private fun inNightWindow(): Boolean = inWindow(Prefs.nightStart, Prefs.nightEnd)
 
+    /** 2.12: Aurora może słuchać słowa / machnięcia tylko poza ciszą nocną i gdy ktoś jest w domu. */
+    private fun voiceAllowedNow(): Boolean =
+        !inWindow(Prefs.wakeQuietStart, Prefs.wakeQuietEnd) && !(Prefs.awayMute && Controller.homeEmpty)
+
     private fun inWindow(start: String, end: String): Boolean {
         val s = parseMin(start, 22 * 60)
         val e = parseMin(end, 6 * 60 + 30)
@@ -279,18 +284,22 @@ class KioskService : Service() {
                 Speech.say(p["text"] ?: "") }
             "/converse" -> {   // komunikat Aurory (dźwięk z HA albo tekst), potem nasłuch odpowiedzi
                 p["volume"]?.toIntOrNull()?.let { setVolume(it) }
-                val listen = p["listen"] != "0"
+                val listen = p["listen"]?.let { it != "0" } ?: Prefs.announceListen   // 2.12: domyślnie bez nasłuchu
                 val wait = p["wait"]?.toIntOrNull() ?: Prefs.listenWaitSec
                 val person = p["person"] ?: ""
                 val url = p["url"] ?: ""
                 if (url.isNotBlank()) Voice.start(this, firstAudio = url, person = person, waitSec = wait, source = "announce", listen = listen)
                 else {
                     Controller.wake()
-                    Speech.say(p["text"] ?: "") { if (listen) Voice.start(this, person = person, waitSec = wait, source = "announce") }
+                    Speech.say(p["text"] ?: "") {
+                        if (listen) Voice.start(this, person = person, waitSec = wait, source = "announce")
+                        else Events.send("voice_end", "source" to "announce")
+                    }
                 }
             }
             "/listen" -> Voice.start(this, person = p["person"] ?: "", waitSec = p["wait"]?.toIntOrNull() ?: Prefs.listenWaitSec, source = "ha")
             "/stoptalk" -> Voice.stop()
+            "/settings" -> Controller.ui.post { Controller.activity?.openSettingsFromHa() }
             "/playsound" -> { val u = p["url"] ?: return 400 to """{"error":"url"}"""
                 playSound(u, p["volume"]?.toIntOrNull()) }
             "/stopsound" -> Controller.ui.post { stopSoundNow(); push() }
