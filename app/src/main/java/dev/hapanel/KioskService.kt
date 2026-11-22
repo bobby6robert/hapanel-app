@@ -262,8 +262,9 @@ class KioskService : Service() {
     private var badPage = 0
     private var lastPageCheck = 0L
     private fun watchdog(now: Long) {
-        if (Updater.installing) return
+        // 2.14.1: „oddech” wysyłamy zawsze (także w czasie instalacji), a sprawdzamy dopiero po niej
         if (now - lastBeatPost > 15_000) { lastBeatPost = now; Controller.ui.post { Controller.uiBeat = SystemClock.elapsedRealtime() } }
+        if (Updater.installing) { Controller.uiBeat = now; return }
         // wątek ekranu nie odpowiada od 90 s → restart całej aplikacji
         if (Controller.activity != null && now - Controller.uiBeat > 90_000) {
             Events.send("watchdog", "reason" to "ui_frozen")

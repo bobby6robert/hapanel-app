@@ -71,9 +71,17 @@ class InstallResultReceiver : BroadcastReceiver() {
         val status = i.getIntExtra(PackageInstaller.EXTRA_STATUS, -1)
         if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
             val confirm = i.getParcelableExtra<Intent>(Intent.EXTRA_INTENT) ?: return
-            Controller.ui.post { Controller.activity?.let { try { it.stopLockTask() } catch (_: Exception) {} } }
             confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            try { c.startActivity(confirm) } catch (_: Exception) {}
+            Updater.installingUntil = System.currentTimeMillis() + 10 * 60_000   // czas na potwierdzenie
+            // 2.14.1: najpierw odpiąć ekran, dopiero potem okno instalatora (przypięcie blokuje obce okna)
+            Controller.ui.post {
+                Controller.activity?.let { try { it.stopLockTask() } catch (_: Exception) {} }
+                Controller.ui.postDelayed({
+                    try { (Controller.activity ?: c).startActivity(confirm) } catch (_: Exception) {
+                        try { c.applicationContext.startActivity(confirm) } catch (_: Exception) {}
+                    }
+                }, 900)
+            }
         } else if (status != PackageInstaller.STATUS_SUCCESS) {
             Updater.installingUntil = 0
             val msg = when (status) {

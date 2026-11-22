@@ -85,7 +85,9 @@ object AppCleaner {
         Controller.ui.post {
             val a = Controller.activity
             try { a?.stopLockTask() } catch (_: Exception) {}
-            try { (a ?: ctx).startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) {}
+            Controller.ui.postDelayed({
+                try { (Controller.activity ?: ctx).startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) {}
+            }, 900)
         }
         return true
     }
