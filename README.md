@@ -31,6 +31,11 @@ Do pełnej obsługi z poziomu HA służy integracja: **[hapanel-integration](htt
 
 „Uśpienie” ekranu to czarna nakładka z minimalną jasnością. Bez roota Android nie pozwala naprawdę wyłączyć ekranu.
 
+## Nowości w 2.14 – sprzątanie tabletu
+- Z HA (integracja **1.11**): lista aplikacji, odinstalowanie lub wyłączenie wybranej (systemowe okno do potwierdzenia na tablecie), usypianie aplikacji w tle, czyszczenie pamięci podręcznej panelu.
+- Automatycznie: co 3 h przy bezczynności usypia aplikacje w tle, w niedzielę o 3:30 restartuje panel (opcja w ustawieniach).
+- Nowe polecenia: `/apps`, `/cleanmem`, `/clearcache`, `/uninstall?package=...`, `/appsettings?package=...`.
+
 ## Nowości w 2.13 – język angielski
 - Wybór języka na górze ustawień: **Systemowy / Polski / English**. Po angielsku są napisy, komunikaty na ekranie, głos Androida i słowo wybudzające (angielski model mowy pobiera się sam). Rozmowę z Aurorą w HA integracja **1.10** prowadzi w języku tabletu.
 

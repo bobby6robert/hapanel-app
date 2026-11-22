@@ -26,6 +26,9 @@ The app speaks **Polish and English** – choose *System / Polski / English* at 
 - **Watchdog:** a frozen screen or a page without an HA connection is reloaded or the app restarts.
 - Updates from GitHub Releases, settings backup (JSON), PIN for the settings, motion detection with the front camera, auto brightness.
 
+## New in 2.14 – tablet cleanup
+From HA (integration 1.11): app list, uninstall or disable the selected app (system dialog confirmed on the tablet), put background apps to sleep, clear the panel cache. Automatic cleanup every 3 h when idle and a panel restart on Sunday 3:30. Endpoints: `/apps`, `/cleanmem`, `/clearcache`, `/uninstall?package=...`, `/appsettings?package=...`.
+
 ## Installation
 
 1. Install the APK from [Releases](https://github.com/bobby6robert/hapanel-app/releases) (allow unknown sources) and start it.
