@@ -43,6 +43,7 @@ class MainActivity : Activity() {
     private lateinit var popupTitle: TextView
     private lateinit var aurora: AuroraView
     private lateinit var talkBtn: TextView
+    private lateinit var saverView: ScreenSaver
     private var taps = 0
     private var firstTap = 0L
     private var retryPending = false
@@ -232,6 +233,10 @@ class MainActivity : Activity() {
         tl2.setMargins(0, 0, dp(18), dp(18))
         root.addView(talkBtn, tl2)
 
+        // --- 2.12.1 wygaszacz ekranu ---
+        saverView = ScreenSaver(this)
+        root.addView(saverView, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+
         // --- czarna nakładka (uśpienie) ---
         overlay = View(this)
         overlay.setBackgroundColor(Color.BLACK)
@@ -402,7 +407,14 @@ class MainActivity : Activity() {
     }
 
     /** Temperatury i informacja na zegarze nocnym (z HA). */
+    fun saverDataChanged() {
+        if (!::saverView.isInitialized) return
+        saverView.updateInfo()
+        if (saverView.visibility == View.VISIBLE) saverView.start()
+    }
+
     fun updateClockInfo() {
+        if (::saverView.isInitialized) saverView.updateInfo()
         val parts = mutableListOf<String>()
         if (Controller.clockOut.isNotBlank()) parts += "na zewnątrz ${Controller.clockOut}°"
         if (Controller.clockIn.isNotBlank()) parts += "w domu ${Controller.clockIn}°"
@@ -462,6 +474,7 @@ class MainActivity : Activity() {
         val lp = window.attributes
         lp.screenBrightness = when {
             Controller.sleeping -> 0.01f
+            Controller.screensaver && !Controller.clock && Prefs.saverType == "black" -> 0.01f
             Controller.night && Prefs.nightEnabled -> (Prefs.nightBrightness / 255f).coerceIn(0.01f, 1f)
             else -> Controller.brightness
         }
@@ -471,13 +484,16 @@ class MainActivity : Activity() {
         if (Controller.deep) window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         // strona HA nie rysuje animacji pod nakładką / zegarem
-        val hidden = Controller.sleeping || Controller.clock
+        val saverOn = Controller.screensaver && !Controller.clock
+        val hidden = Controller.sleeping || Controller.clock || saverOn
         if (hidden != webPaused) {
             webPaused = hidden
             try { if (hidden) { web.onPause(); web.pauseTimers() } else { web.resumeTimers(); web.onResume() } } catch (_: Exception) {}
         }
         overlay.visibility = if (Controller.sleeping) View.VISIBLE else View.GONE
         clockLayer.visibility = if (Controller.clock) View.VISIBLE else View.GONE
+        if (saverOn && !Controller.sleeping) { if (saverView.visibility != View.VISIBLE) saverView.start() }
+        else if (saverView.visibility == View.VISIBLE) saverView.stop()
         updateVoice()
     }
 
@@ -487,7 +503,7 @@ class MainActivity : Activity() {
         val talking = Voice.state != Voice.State.IDLE
         if (talking && aurora.visibility != View.VISIBLE) { aurora.visibility = View.VISIBLE; aurora.invalidate() }
         else if (!talking && aurora.visibility == View.VISIBLE) aurora.visibility = View.GONE
-        talkBtn.visibility = if (Prefs.talkButton && Prefs.voiceEnabled && !talking && !Controller.sleeping && !Controller.clock)
+        talkBtn.visibility = if (Prefs.talkButton && Prefs.voiceEnabled && !talking && !Controller.sleeping && !Controller.clock && !Controller.screensaver)
             View.VISIBLE else View.GONE
     }
 

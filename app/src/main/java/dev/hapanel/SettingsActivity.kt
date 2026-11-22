@@ -2,6 +2,7 @@ package dev.hapanel
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
@@ -410,6 +411,36 @@ class SettingsActivity : Activity() {
         cVoice.addView(pill("Test rozmowy", false, MINT) { Voice.start(this, source = "button") }, lp(WRAP_CONTENT, WRAP_CONTENT, top = dp(14)))
         content.addView(cVoice)
 
+        val cRec = card("Nagraj Aurorę – głosy domowników")
+        cRec.addView(label("Każdy domownik nagrywa słowo „Aurora” 5 razy (zwykłym głosem, z miejsca, z którego zwykle woła). Potem Aurora reaguje na Wasze głosy, a telewizor i obce głosy są odrzucane. Nagrania zostają tylko na tablecie.", 13f))
+        val recInfo = label(recSummary(), 14f)
+        cRec.addView(recInfo)
+        val recName = addField(cRec, F("Kto nagrywa", "np. Robert, Ela, Wiki, Błażej, Bartek, gość", { "" }, { }), track = false)
+        cRec.addView(pill("● Nagraj „Aurora”", true, MINT) { recordAurora(recName.text.toString(), recInfo) }, lp(WRAP_CONTENT, WRAP_CONTENT, top = dp(12)))
+        cRec.addView(pill("Usuń wszystkie nagrania", false, Color.parseColor("#FF8A80")) {
+            AlertDialog.Builder(this).setTitle("Usunąć nagrania?").setMessage("Aurora wróci do zwykłego rozpoznawania słowa.")
+                .setPositiveButton("Usuń") { _, _ -> VoicePrint.deleteAll(this); recInfo.text = recSummary() }
+                .setNegativeButton("Anuluj", null).show()
+        }, lp(WRAP_CONTENT, WRAP_CONTENT, top = dp(8)))
+        content.addView(cRec)
+
+        val cSaver = card("Wygaszacz ekranu")
+        cSaver.addView(label("Po bezczynności zamiast dashboardu. Dotknięcie wraca do dashboardu, ruch go nie zamyka. Zdjęcia (folder w HA) i kamery wybierasz w HA – opcje integracji HA Panel.", 13f))
+        addSwitch(cSaver, O("Wygaszacz włączony", { Prefs.saverEnabled }, { Prefs.saverEnabled = it }))
+        val types = listOf("clock", "photos", "cameras", "black")
+        addField(cSaver, F("Rodzaj wygaszacza", "1 = zegar i pogoda, 2 = zdjęcia rodziny, 3 = kamery, 4 = czarny ekran",
+            { (types.indexOf(Prefs.saverType) + 1).coerceAtLeast(1).toString() },
+            { Prefs.saverType = types[((it.toIntOrNull() ?: 1) - 1).coerceIn(0, 3)] }, num = true))
+        addField(cSaver, F("Włącz po (sekundy)", "Domyślnie 120 (min. 15)",
+            { Prefs.saverAfterSec.toString() }, { Prefs.saverAfterSec = (it.toIntOrNull() ?: 120).coerceIn(15, 3600) }, num = true))
+        addField(cSaver, F("Zmiana zdjęcia co (sekundy)", "Domyślnie 15",
+            { Prefs.saverPhotoSec.toString() }, { Prefs.saverPhotoSec = (it.toIntOrNull() ?: 15).coerceIn(3, 600) }, num = true))
+        addField(cSaver, F("Odświeżanie kamer co (sekundy)", "Domyślnie 5",
+            { Prefs.saverCamSec.toString() }, { Prefs.saverCamSec = (it.toIntOrNull() ?: 5).coerceIn(2, 60) }, num = true))
+        addSwitch(cSaver, O("Zdjęcia w losowej kolejności", { Prefs.saverShuffle }, { Prefs.saverShuffle = it }))
+        cSaver.addView(pill("Pokaż wygaszacz", false, MINT) { saveAll(); Controller.ui.postDelayed({ Controller.showSaver() }, 800) }, lp(WRAP_CONTENT, WRAP_CONTENT, top = dp(14)))
+        content.addView(cSaver)
+
         val cAnn = card("Komunikaty i telewizor")
         cAnn.addView(label("Na czas komunikatu Aurory HA ścisza telewizor, a potem przywraca głośność. Telewizor wybierasz w HA (opcje integracji HA Panel).", 13f))
         addSwitch(cAnn, O("Ściszaj telewizor" + (if (Prefs.duckName.isNotBlank()) " (${Prefs.duckName})" else ""), { Prefs.duckEnabled }, { Prefs.duckEnabled = it }))
@@ -502,6 +533,34 @@ class SettingsActivity : Activity() {
     private fun removePin(cur: EditText?) {
         if (!pinGate(cur)) return
         Pin.clear(); toast("PIN usunięty"); recreate()
+    }
+
+    private fun recSummary(): String {
+        val p = VoicePrint.people(this)
+        if (p.isEmpty()) return "Brak nagrań – Aurora działa jak dotąd."
+        val total = p.values.sum()
+        return p.entries.joinToString(", ") { "${it.key.replaceFirstChar(Char::uppercase)}: ${it.value}" } +
+            (if (total < 3) "  (potrzeba min. 3 nagrań)" else "  ✓ rozpoznawanie głosów włączone")
+    }
+
+    private fun recordAurora(who: String, info: TextView) {
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 2); return
+        }
+        if (who.isBlank()) { Toast.makeText(this, "Wpisz, kto nagrywa", Toast.LENGTH_SHORT).show(); return }
+        val dlg = AlertDialog.Builder(this).setTitle("Powiedz teraz: „Aurora”").setMessage("Nagrywam… (2 sekundy)").setCancelable(false).create()
+        dlg.show()
+        Thread {
+            Thread.sleep(300)
+            val ok = VoicePrint.recordOne(applicationContext, who)
+            runOnUiThread {
+                dlg.dismiss()
+                info.text = recSummary()
+                val n = VoicePrint.people(this)[who.trim().lowercase().replace(Regex("[^a-ząćęłńóśźż0-9]"), "")] ?: 0
+                Toast.makeText(this, if (ok) "Zapisano ($n). " + (if (n < 5) "Nagraj jeszcze raz." else "Wystarczy, dziękuję!")
+                    else "Nie usłyszałem – powiedz wyraźnie „Aurora” i spróbuj jeszcze raz", Toast.LENGTH_LONG).show()
+            }
+        }.start()
     }
 
     private fun saveAll() {

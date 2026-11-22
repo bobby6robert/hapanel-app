@@ -182,6 +182,10 @@ class KioskService : Service() {
         // w trybie oszczędnym ekran usypia po 2 min nawet, gdy „usypiaj po” = 0
         val s = Prefs.sleepAfterSec.let { if (it <= 0 && saver && !nightNow) 120 else it }
         if (s > 0 && !Controller.sleeping && idle > s * 1000L) Controller.sleep()
+        // 2.12.1 wygaszacz: po bezczynności, poza nocnym zegarem; ruch go nie zamyka (zamyka dotyk)
+        if (Prefs.saverEnabled && !Controller.screensaver && !Controller.sleeping && !Controller.clock &&
+            Voice.state == Voice.State.IDLE && idle > Prefs.saverAfterSec.coerceAtLeast(15) * 1000L) Controller.showSaver()
+        if (!Prefs.saverEnabled && Controller.screensaver) Controller.hideSaver()
         // kamera ruchu: stoi przy aktywnym używaniu ekranu i w głębokim uśpieniu; w zwykłym uśpieniu działa zrywami
         motion?.let {
             when {
@@ -324,6 +328,8 @@ class KioskService : Service() {
                 Controller.popup(u, p["seconds"]?.toIntOrNull() ?: 30, p["title"] ?: "") }
             "/closepopup", "/popup_close" -> Controller.closePopup()
             "/clock" -> Controller.setClockData(p["out"], p["in"], p["info"])
+            "/saver" -> Controller.setSaverData(p["photos"], p["cams"], p["weather"])
+            "/screensaver" -> if (p["on"] == "0") Controller.wake() else Controller.showSaver()
             "/status" -> return 200 to statusJson()
             else -> return 404 to """{"error":"not found"}"""
         }
@@ -395,6 +401,7 @@ class KioskService : Service() {
             .put("pin", Pin.isSet())
             .put("night", Controller.night)
             .put("clock", Controller.clock)
+            .put("screensaver", Controller.screensaver)
             .put("battery_temp", batteryTemp)
             .put("battery_health", batteryHealth)
             .put("mem_free", memFreeMb())
@@ -455,7 +462,7 @@ class KioskService : Service() {
         motion = null
         if (Prefs.motionEnabled && checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
             motion = MotionDetector(this, Prefs.motionThreshold,
-                onTrigger = { Controller.touch(); if (Prefs.wakeOnMotion) Controller.wake() },
+                onTrigger = { Controller.touch(); if (Prefs.wakeOnMotion) Controller.wake(keepSaver = true) },
                 onState = { motionActive = it; push(); Events.send("motion", "state" to it) }).also {
                 try { it.start() } catch (_: Exception) {}
             }

@@ -12,6 +12,10 @@ object Controller {
     @Volatile var clock = false              // nakładka z zegarem (tryb nocny)
     @Volatile var night = false              // czy trwa okno nocne
     @Volatile var saver = false              // tryb oszczędny aktywny (bateria / noc)
+    @Volatile var screensaver = false        // 2.12.1: wygaszacz ekranu widoczny
+    @Volatile var saverPhotos: List<String> = emptyList()
+    @Volatile var saverCams: List<String> = emptyList()
+    @Volatile var saverWeather = ""
     @Volatile var homeEmpty = false          // 2.12: nikogo nie ma w domu (z HA) – Aurora milczy
     /** Głębokie uśpienie: ekran może naprawdę zgasnąć, strona i nasłuch stoją. */
     val deep: Boolean get() = saver && (sleeping || clock)
@@ -38,6 +42,14 @@ object Controller {
         info?.let { clockInfo = it.trim() }
         ui.post { activity?.updateClockInfo() }
     }
+    fun setSaverData(photos: String?, cams: String?, weather: String?) {
+        photos?.let { saverPhotos = it.split("\n").map(String::trim).filter { u -> u.startsWith("http") } }
+        cams?.let { saverCams = it.split("\n").map(String::trim).filter { u -> u.startsWith("http") } }
+        weather?.let { saverWeather = it.trim() }
+        ui.post { activity?.saverDataChanged() }
+    }
+    fun showSaver() { if (!screensaver) { screensaver = true; ui.post { activity?.applyScreen() }; onChange?.invoke() } }
+    fun hideSaver() { if (screensaver) { screensaver = false; ui.post { activity?.applyScreen() }; onChange?.invoke() } }
     fun closePopup() { ui.post { activity?.closePopup() } }
 
     @JvmName("changeBrightness")
@@ -52,9 +64,10 @@ object Controller {
     fun hideClock() { if (clock) { clock = false; ui.post { activity?.applyScreen() }; onChange?.invoke() } }
 
     /** Wybudza z uśpienia i z zegara. */
-    fun wake() {
+    fun wake(keepSaver: Boolean = false) {
         touch()
         var changed = false
+        if (screensaver && !keepSaver) { screensaver = false; changed = true }
         if (sleeping) { sleeping = false; changed = true }
         if (clock) { clock = false; changed = true }
         if (changed) { ui.post { activity?.applyScreen() }; onChange?.invoke() }

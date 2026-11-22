@@ -63,6 +63,14 @@ object Prefs {
     var duckEnabled: Boolean get() = sp.getBoolean("duckEnabled", true); set(v) = p("duckEnabled", v)
     var duckLevel: Int get() = sp.getInt("duckLevel", 15); set(v) = p("duckLevel", v)
     var announceVolume: Int get() = sp.getInt("announceVolume", 0); set(v) = p("announceVolume", v)
+    // 2.12.1: wygaszacz ekranu
+    var saverEnabled: Boolean get() = sp.getBoolean("saverEnabled", false); set(v) = p("saverEnabled", v)
+    /** clock / photos / cameras / black */
+    var saverType: String get() = s("saverType", "clock"); set(v) = p("saverType", v)
+    var saverAfterSec: Int get() = sp.getInt("saverAfterSec", 120); set(v) = p("saverAfterSec", v)
+    var saverPhotoSec: Int get() = sp.getInt("saverPhotoSec", 15); set(v) = p("saverPhotoSec", v)
+    var saverCamSec: Int get() = sp.getInt("saverCamSec", 5); set(v) = p("saverCamSec", v)
+    var saverShuffle: Boolean get() = sp.getBoolean("saverShuffle", true); set(v) = p("saverShuffle", v)
     var duckName: String get() = sp.getString("duckName", "") ?: ""; set(v) = p("duckName", v)
     var listenWaitSec: Int get() = sp.getInt("listenWaitSec", 8); set(v) = p("listenWaitSec", v)
     var listenMaxSec: Int get() = sp.getInt("listenMaxSec", 30); set(v) = p("listenMaxSec", v)
