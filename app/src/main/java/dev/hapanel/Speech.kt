@@ -18,7 +18,7 @@ object Speech {
         if (tts != null) return
         tts = TextToSpeech(c.applicationContext) { st ->
             if (st == TextToSpeech.SUCCESS) {
-                val pl = Locale("pl", "PL")
+                val pl = if (L.en) Locale.US else Locale("pl", "PL")
                 val ok = (tts?.isLanguageAvailable(pl) ?: TextToSpeech.LANG_NOT_SUPPORTED) >= TextToSpeech.LANG_AVAILABLE
                 tts?.language = if (ok) pl else Locale.getDefault()
                 tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {

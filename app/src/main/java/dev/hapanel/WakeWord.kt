@@ -25,8 +25,10 @@ object WakeWord {
     /** Słowo „dom” jest krótkie i częste w mowie – wyższy próg pewności. */
     private val MIN_CONF_HOME get() = when (Prefs.wakeSensitivity) { 1 -> 0.99; 3 -> 0.9; else -> 0.96 }
 
-    private const val MODEL_URL = "https://alphacephei.com/vosk/models/vosk-model-small-pl-0.22.zip"
-    private const val MODEL_DIR = "vosk-pl"
+    private val MODEL_URL get() = if (L.en) "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip"
+        else "https://alphacephei.com/vosk/models/vosk-model-small-pl-0.22.zip"
+    private val MODEL_DIR get() = "vosk-" + L.code
+    @Volatile private var modelLang = ""
 
     @Volatile var status = "off"        // off / downloading / loading / listening / paused / error
         private set
@@ -55,10 +57,11 @@ object WakeWord {
         if (!allowed || Voice.busy() || VoicePrint.recording) { if (service != null) release(); if (!allowed && status != "error") status = "off"; return }
         val words = listOfNotNull(
             Prefs.wakeWordText.ifBlank { "aurora" }.takeIf { allowWake },
-            Prefs.homeWordText.ifBlank { "dom" }.takeIf { allowHome })
+            Prefs.homeWordNow.takeIf { allowHome })
         if (service != null && words == active) return
         if (service != null) release()
         if (ctx.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { status = "error"; return }
+        if (model != null && modelLang != L.code) { release(); try { model?.close() } catch (_: Exception) {}; model = null }   // zmiana języka
         val m = model
         if (m == null) {
             if (System.currentTimeMillis() - lastFail > 10 * 60_000L) load(ctx.applicationContext)
@@ -125,7 +128,7 @@ object WakeWord {
     private fun check(json: String?, key: String) {
         if (json == null) return
         val aurora = Prefs.wakeWordText.ifBlank { "aurora" }
-        val home = Prefs.homeWordText.ifBlank { "dom" }
+        val home = Prefs.homeWordNow
         // które słowo padło (tylko spośród aktualnie nasłuchiwanych); „dom” jest krótki – wymaga większej pewności
         var heard = ""
         var conf = 0.0
@@ -205,6 +208,7 @@ object WakeWord {
                 status = "loading"
                 try { VoicePrint.load(ctx) } catch (_: Throwable) {}
                 model = Model(dir.absolutePath)
+                modelLang = L.code
                 status = "paused"
             } catch (_: Throwable) {
                 status = "error"; lastFail = System.currentTimeMillis()

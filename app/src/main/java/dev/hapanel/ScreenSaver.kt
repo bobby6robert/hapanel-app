@@ -128,8 +128,8 @@ class ScreenSaver(ctx: Context) : FrameLayout(ctx) {
 
     fun updateInfo() {
         val w = Controller.saverWeather.ifBlank {
-            listOfNotNull(Controller.clockOut.takeIf { it.isNotBlank() }?.let { "na zewnątrz $it°" },
-                Controller.clockIn.takeIf { it.isNotBlank() }?.let { "w domu $it°" }).joinToString("   ·   ")
+            listOfNotNull(Controller.clockOut.takeIf { it.isNotBlank() }?.let { L.t("na zewnątrz $it°", "outside $it°") },
+                Controller.clockIn.takeIf { it.isNotBlank() }?.let { L.t("w domu $it°", "inside $it°") }).joinToString("   ·   ")
         }
         weatherV.text = w
         weatherV.visibility = if (w.isBlank()) View.GONE else View.VISIBLE

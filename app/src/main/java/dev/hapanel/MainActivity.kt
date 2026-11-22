@@ -186,7 +186,7 @@ class MainActivity : Activity() {
         }
         popupLayer.addView(popupWeb, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
         val closeBtn = TextView(this)
-        closeBtn.text = "Zamknij  ✕"
+        closeBtn.text = L.t("Zamknij  ✕", "Close  ✕")
         closeBtn.textSize = 16f
         closeBtn.setTextColor(Color.parseColor("#FF6B6B"))
         closeBtn.typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
@@ -227,7 +227,7 @@ class MainActivity : Activity() {
         tb.setStroke(dp(1), Color.argb(160, 124, 243, 212))
         talkBtn.background = tb
         talkBtn.elevation = dp(6).toFloat()
-        talkBtn.contentDescription = "Porozmawiaj z Aurorą"
+        talkBtn.contentDescription = L.t("Porozmawiaj z Aurorą", "Talk to Aurora")
         talkBtn.setOnClickListener { Voice.start(this, source = "button") }
         val tl2 = FrameLayout.LayoutParams(dp(64), dp(64), Gravity.BOTTOM or Gravity.END)
         tl2.setMargins(0, 0, dp(18), dp(18))
@@ -291,7 +291,7 @@ class MainActivity : Activity() {
         Controller.fallback = urlIndex > 0
         if (urlIndex > 0) {
             val secure = Controller.currentUrl.startsWith("https://")
-            banner.text = if (secure) "Adres awaryjny" else "Adres awaryjny · bez mikrofonu"
+            banner.text = if (secure) L.t("Adres awaryjny", "Fallback address") else L.t("Adres awaryjny · bez mikrofonu", "Fallback address · no microphone")
             banner.visibility = View.VISIBLE
         } else banner.visibility = View.GONE
     }
@@ -321,7 +321,7 @@ class MainActivity : Activity() {
 
     private fun errorHtml(tried: String): String {
         val host = try { URL(tried).host } catch (_: Exception) { tried }
-        return """<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><body style="margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#0E1A22,#090D12);color:#E8F1F8;font-family:sans-serif"><div style="width:14px;height:14px;border-radius:50%;background:#FFC46B;box-shadow:0 0 24px #FFC46B;margin-bottom:28px"></div><div style="font-size:30px;font-weight:300">Brak połączenia z Home Assistant</div><div style="margin-top:12px;color:#8A9BAD;font-size:17px">Próbuję: $host · ponawiam co 10 sekund…</div></body>"""
+        return """<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><body style="margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#0E1A22,#090D12);color:#E8F1F8;font-family:sans-serif"><div style="width:14px;height:14px;border-radius:50%;background:#FFC46B;box-shadow:0 0 24px #FFC46B;margin-bottom:28px"></div><div style="font-size:30px;font-weight:300"${L.t(">Brak połączenia z Home Assistant</div><div style=", ">No connection to Home Assistant</div><div style=")}"margin-top:12px;color:#8A9BAD;font-size:17px"${L.t(">Próbuję: $host · ponawiam co 10 sekund…</div></body>", ">Trying: $host · retrying every 10 seconds…</div></body>")}"""
     }
 
     @Suppress("DEPRECATION")
@@ -331,7 +331,7 @@ class MainActivity : Activity() {
             "${a and 0xff}.${(a shr 8) and 0xff}.${(a shr 16) and 0xff}.${(a shr 24) and 0xff}"
         } catch (_: Exception) { "?" }
         val code = Prefs.pairCode.let { it.substring(0, 3) + " " + it.substring(3) }
-        return """<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><body style="margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(135deg,#0E1A22,#090D12);color:#E8F1F8;font-family:sans-serif;padding:24px;box-sizing:border-box"><div style="width:14px;height:14px;border-radius:50%;background:#7CF3D4;box-shadow:0 0 24px #7CF3D4;margin-bottom:28px"></div><div style="font-size:30px;font-weight:300">Czekam na konfigurację z Home Assistant</div><div style="margin-top:16px;color:#8A9BAD;font-size:17px;max-width:640px;line-height:1.5">W Home Assistant wejdź w Ustawienia → Urządzenia i usługi. Pojawi się wykryty tablet „HA Panel”. Kliknij Skonfiguruj i wpisz kod parowania:</div><div style="margin-top:20px;font-size:54px;letter-spacing:8px;color:#7CF3D4;font-weight:300">$code</div><div style="margin-top:22px;padding:8px 16px;border-radius:999px;background:rgba(138,155,173,.15);color:#8A9BAD;font-size:15px">Adres tabletu: $ip : ${Prefs.port}</div><div style="margin-top:28px;color:#5F7083;font-size:14px">Ręczna konfiguracja: 5 szybkich dotknięć w lewy górny róg ekranu</div></body>"""
+        return """<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><body style="margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(135deg,#0E1A22,#090D12);color:#E8F1F8;font-family:sans-serif;padding:24px;box-sizing:border-box"><div style="width:14px;height:14px;border-radius:50%;background:#7CF3D4;box-shadow:0 0 24px #7CF3D4;margin-bottom:28px"></div><div style="font-size:30px;font-weight:300"${L.t(">Czekam na konfigurację z Home Assistant</div><div style=", ">Waiting for configuration from Home Assistant</div><div style=")}"margin-top:16px;color:#8A9BAD;font-size:17px;max-width:640px;line-height:1.5"${L.t(">W Home Assistant wejdź w Ustawienia → Urządzenia i usługi. Pojawi się wykryty tablet „HA Panel”. Kliknij Skonfiguruj i wpisz kod parowania:</div><div style=", ">In Home Assistant open Settings → Devices & services. A discovered tablet “HA Panel” will appear. Click Configure and enter the pairing code:</div><div style=")}"margin-top:20px;font-size:54px;letter-spacing:8px;color:#7CF3D4;font-weight:300">$code</div><div style="margin-top:22px;padding:8px 16px;border-radius:999px;background:rgba(138,155,173,.15);color:#8A9BAD;font-size:15px"${L.t(">Adres tabletu: $ip : ${Prefs.port}</div><div style=", ">Tablet address: $ip : ${Prefs.port}</div><div style=")}"margin-top:28px;color:#5F7083;font-size:14px"${L.t(">Ręczna konfiguracja: 5 szybkich dotknięć w lewy górny róg ekranu</div></body>", ">Manual setup: 5 quick taps in any screen corner</div></body>")}"""
     }
 
     // ---------- wygląd: zoom, CSS, JS ----------
@@ -416,8 +416,8 @@ class MainActivity : Activity() {
     fun updateClockInfo() {
         if (::saverView.isInitialized) saverView.updateInfo()
         val parts = mutableListOf<String>()
-        if (Controller.clockOut.isNotBlank()) parts += "na zewnątrz ${Controller.clockOut}°"
-        if (Controller.clockIn.isNotBlank()) parts += "w domu ${Controller.clockIn}°"
+        if (Controller.clockOut.isNotBlank()) parts += L.t("na zewnątrz ${Controller.clockOut}°", "outside ${Controller.clockOut}°")
+        if (Controller.clockIn.isNotBlank()) parts += L.t("w domu ${Controller.clockIn}°", "inside ${Controller.clockIn}°")
         clockTemps.text = parts.joinToString("   ·   ")
         clockTemps.visibility = if (parts.isEmpty()) View.GONE else View.VISIBLE
         clockInfoV.text = Controller.clockInfo
@@ -433,7 +433,7 @@ class MainActivity : Activity() {
     private fun requestSettings() {
         if (!Pin.isSet()) { openSettings(); return }
         val lock = Pin.lockRemainingSec()
-        if (lock > 0) { Toast.makeText(this, "Zbyt wiele prób. Spróbuj za $lock s", Toast.LENGTH_SHORT).show(); return }
+        if (lock > 0) { Toast.makeText(this, L.t("Zbyt wiele prób. Spróbuj za $lock s", "Too many attempts. Try again in $lock s"), Toast.LENGTH_SHORT).show(); return }
         val input = EditText(this)
         input.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
         input.hint = "PIN"
@@ -441,13 +441,13 @@ class MainActivity : Activity() {
         holder.setPadding(dp(24), dp(8), dp(24), 0)
         holder.addView(input, FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
         AlertDialog.Builder(this)
-            .setTitle("Podaj PIN")
+            .setTitle(L.t("Podaj PIN", "Enter PIN"))
             .setView(holder)
             .setPositiveButton("OK") { _, _ ->
                 if (Pin.verify(input.text.toString())) openSettings()
-                else Toast.makeText(this, "Zły PIN", Toast.LENGTH_SHORT).show()
+                else Toast.makeText(this, L.t("Zły PIN", "Wrong PIN"), Toast.LENGTH_SHORT).show()
             }
-            .setNegativeButton("Anuluj", null)
+            .setNegativeButton(L.t("Anuluj", "Cancel"), null)
             .show()
     }
 
@@ -578,7 +578,7 @@ class MainActivity : Activity() {
         val box = LinearLayout(this); box.orientation = LinearLayout.VERTICAL; box.setPadding(dp(22), dp(8), dp(22), dp(4))
         fun title(t: String) = TextView(this).apply { text = t; textSize = 15f; setPadding(0, dp(12), 0, dp(2)) }
         // głośność
-        box.addView(title("🔊 Głośność"))
+        box.addView(title(L.t("🔊 Głośność", "🔊 Volume")))
         val maxV = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
         box.addView(SeekBar(this).apply {
             max = maxV; progress = am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
@@ -589,8 +589,8 @@ class MainActivity : Activity() {
             })
         })
         // jasność
-        box.addView(title("☀ Jasność"))
-        val autoSw = Switch(this).apply { text = "Automatyczna jasność"; isChecked = Prefs.autoBrightness }
+        box.addView(title(L.t("☀ Jasność", "☀ Brightness")))
+        val autoSw = Switch(this).apply { text = L.t("Automatyczna jasność", "Auto brightness"); isChecked = Prefs.autoBrightness }
         val br = SeekBar(this).apply {
             max = 100; progress = ((if (Controller.brightness > 0) Controller.brightness else 0.6f) * 100).toInt()
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -606,19 +606,19 @@ class MainActivity : Activity() {
         autoSw.setOnCheckedChangeListener { _, on -> Prefs.autoBrightness = on; if (!on) Controller.setBrightness(maxOf(2, br.progress) / 100f) }
         box.addView(br); box.addView(autoSw)
         // przyciski
-        val quietTxt = if (Controller.quiet) "🔔 Wyłącz ciszę" else "🔕 Cisza na godzinę"
+        val quietTxt = if (Controller.quiet) L.t("🔔 Wyłącz ciszę", "🔔 End quiet mode") else L.t("🔕 Cisza na godzinę", "🔕 Quiet for an hour")
         fun btn(t: String, a: () -> Unit) = Button(this).apply { text = t; isAllCaps = false
             setOnClickListener { quickDlg?.dismiss(); a() } }
         box.addView(btn(quietTxt) {
             Controller.quietUntil = if (Controller.quiet) 0L else System.currentTimeMillis() + 3_600_000L
-            Toast.makeText(this, if (Controller.quiet) "Aurora milczy do " + java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(Controller.quietUntil)) else "Cisza wyłączona", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, if (Controller.quiet) L.t("Aurora milczy do ", "Aurora is quiet until ") + java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(Controller.quietUntil)) else L.t("Cisza wyłączona", "Quiet mode off"), Toast.LENGTH_SHORT).show()
             Events.send("quiet", "until" to Controller.quietUntil / 1000)
         }, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = dp(14) })
-        box.addView(btn("🖼 Wygaszacz teraz") { Controller.ui.postDelayed({ Controller.showSaver() }, 300) })
-        box.addView(btn("↻ Odśwież stronę") { Controller.reload() })
-        box.addView(btn("⚙ Ustawienia") { requestSettings() })
+        box.addView(btn(L.t("🖼 Wygaszacz teraz", "🖼 Screensaver now")) { Controller.ui.postDelayed({ Controller.showSaver() }, 300) })
+        box.addView(btn(L.t("↻ Odśwież stronę", "↻ Reload page")) { Controller.reload() })
+        box.addView(btn(L.t("⚙ Ustawienia", "⚙ Settings")) { requestSettings() })
         val sc = ScrollView(this); sc.addView(box)
-        quickDlg = AlertDialog.Builder(this).setTitle("Szybkie menu").setView(sc).setNegativeButton("Zamknij", null).show()
+        quickDlg = AlertDialog.Builder(this).setTitle(L.t("Szybkie menu", "Quick menu")).setView(sc).setNegativeButton(L.t("Zamknij", "Close"), null).show()
     }
 
     /** 2.12: otwarcie ustawień przyciskiem z HA (polecenie już autoryzowane tokenem integracji). */

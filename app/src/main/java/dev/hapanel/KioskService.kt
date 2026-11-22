@@ -101,7 +101,7 @@ class KioskService : Service() {
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel("hapanel", "HA Panel", NotificationManager.IMPORTANCE_LOW))
         startForeground(1, Notification.Builder(this, "hapanel")
-            .setSmallIcon(android.R.drawable.ic_menu_view).setContentTitle("HA Panel działa").build())
+            .setSmallIcon(android.R.drawable.ic_menu_view).setContentTitle(L.t("HA Panel działa", "HA Panel is running")).build())
 
         // Tablet nie zasypia w sieci ani w procesorze (dzwonek w nocy musi dojść).
         val pm = getSystemService(POWER_SERVICE) as PowerManager
@@ -544,12 +544,12 @@ class KioskService : Service() {
         if (battery >= 0) post("sensor.${n}_battery", battery.toString(),
             mapOf("unit_of_measurement" to "%", "device_class" to "battery", "friendly_name" to "$name bateria"))
         post("binary_sensor.${n}_charging", if (charging) "on" else "off",
-            mapOf("device_class" to "battery_charging", "friendly_name" to "$name ładowanie"))
+            mapOf("device_class" to "battery_charging", "friendly_name" to L.t("$name ładowanie", "$name charging")))
         post("binary_sensor.${n}_screen", if (Controller.sleeping) "off" else "on", mapOf("friendly_name" to "$name ekran"))
         if (Prefs.motionEnabled) post("binary_sensor.${n}_motion", if (motionActive) "on" else "off",
             mapOf("device_class" to "motion", "friendly_name" to "$name ruch"))
         if (lux >= 0) post("sensor.${n}_illuminance", lux.toInt().toString(),
-            mapOf("unit_of_measurement" to "lx", "device_class" to "illuminance", "friendly_name" to "$name światło"))
+            mapOf("unit_of_measurement" to "lx", "device_class" to "illuminance", "friendly_name" to L.t("$name światło", "$name light")))
     }
 
     private fun post(entity: String, state: String, attrs: Map<String, String>) {

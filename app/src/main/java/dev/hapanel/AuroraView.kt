@@ -79,7 +79,7 @@ class AuroraView(c: Context) : View(c) {
 
         val cap = Voice.caption
         if (cap.isNotBlank()) cv.drawText(cap, w / 2f, h * 0.86f, text)
-        cv.drawText("Dotknij, aby zakończyć rozmowę", w / 2f, h * 0.94f, hint)
+        cv.drawText(L.t("Dotknij, aby zakończyć rozmowę", "Tap to end the conversation"), w / 2f, h * 0.94f, hint)
 
         if (visibility == VISIBLE) postInvalidateOnAnimation()
     }
