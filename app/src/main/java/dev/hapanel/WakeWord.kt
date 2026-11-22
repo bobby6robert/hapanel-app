@@ -57,7 +57,7 @@ object WakeWord {
         if (!allowed || Voice.busy() || VoicePrint.recording) { if (service != null) release(); if (!allowed && status != "error") status = "off"; return }
         val words = listOfNotNull(
             Prefs.wakeWordText.ifBlank { "aurora" }.takeIf { allowWake },
-            Prefs.homeWord.takeIf { allowHome })
+            Prefs.homeWordNow.takeIf { allowHome })
         if (service != null && words == active) return
         if (service != null) release()
         if (ctx.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { status = "error"; return }
@@ -128,7 +128,7 @@ object WakeWord {
     private fun check(json: String?, key: String) {
         if (json == null) return
         val aurora = Prefs.wakeWordText.ifBlank { "aurora" }
-        val home = Prefs.homeWord
+        val home = Prefs.homeWordNow
         // które słowo padło (tylko spośród aktualnie nasłuchiwanych); „dom” jest krótki – wymaga większej pewności
         var heard = ""
         var conf = 0.0
