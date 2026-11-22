@@ -171,7 +171,7 @@ object WakeWord {
             Events.send("wake_word", "word" to word, "conf" to conf, "heard" to heard.take(80),
                 "who" to (who ?: ""), "dist" to Math.round(dist * 100) / 100.0)
             if (word == home && word != aurora) Voice.start(ctx, source = "command", waitSec = 5)
-            else Voice.start(ctx, source = "wake")
+            else Voice.start(ctx, source = "wake", person = who ?: "")   // 2.12.1: rozpoznany domownik
         }
     }
 

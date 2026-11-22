@@ -16,6 +16,9 @@ object Controller {
     @Volatile var saverPhotos: List<String> = emptyList()
     @Volatile var saverCams: List<String> = emptyList()
     @Volatile var saverWeather = ""
+    @Volatile var quietUntil = 0L            // 2.12.1: „cisza na godzinę” z szybkiego menu
+    val quiet: Boolean get() = System.currentTimeMillis() < quietUntil
+    @Volatile var uiBeat = SystemClock.elapsedRealtime()   // 2.12.1: strażnik – ostatni „oddech” wątku ekranu
     @Volatile var homeEmpty = false          // 2.12: nikogo nie ma w domu (z HA) – Aurora milczy
     /** Głębokie uśpienie: ekran może naprawdę zgasnąć, strona i nasłuch stoją. */
     val deep: Boolean get() = saver && (sleeping || clock)
