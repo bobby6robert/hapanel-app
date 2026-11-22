@@ -2,7 +2,7 @@ plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 android {
     namespace = "dev.hapanel"
     compileSdk = 34
-    defaultConfig { applicationId = "dev.hapanel"; minSdk = 26; targetSdk = 33; versionCode = 17; versionName = "2.14" }
+    defaultConfig { applicationId = "dev.hapanel"; minSdk = 26; targetSdk = 33; versionCode = 18; versionName = "2.14.1" }
     signingConfigs {
         getByName("debug") {
             storeFile = file("debug.keystore")
