@@ -65,4 +65,4 @@ GitHub Actions builds the APK on every commit; publishing a release attaches `ha
 
 ## Licence
 
-See [LICENSE](LICENSE).
+Add a `LICENSE` file (e.g. MIT) before public distribution.
